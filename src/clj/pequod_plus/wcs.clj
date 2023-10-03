@@ -57,6 +57,7 @@
 
 ; (def input-cats (into [] (range 1 101)))
 
+; TODO : update input here?
 (defn create-wcs-bulk [num-ind-0 num-ind-1 num-ind-2]
   (let [input-cats (vec (range 1 11))]
     (->> (merge (create-wcs num-ind-0 input-cats 0)

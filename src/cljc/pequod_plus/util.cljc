@@ -56,11 +56,11 @@
            :last-years-public-good-prices (:public-good-prices t))
            :last-years-pollutant-prices (:public-good))
 
+; NB: Watch for pollutant-prices and scaling effects -- i.e., does a price affect all CCs or just one CC?
 (defn consume [private-goods private-good-prices public-goods public-good-prices pollutants pollutant-prices num-of-ccs cc]
   (let [private-good-exponents (cc :private-good-exponents)
         public-good-exponents (cc :public-good-exponents)
         pollutant-exponents (cc :pollutant-exponents)
-        income (cc :income) ; update this -> Unet =  Uc(z) - Up(z) = 5([pz/px]z) j  - zk / pzz*(avg)
         private-good-demands (mapv 
                                (fn [private-good]
                                  (/ (* income (nth private-good-exponents (dec private-good)))
@@ -78,10 +78,14 @@
                                        (* (apply + (concat private-good-exponents public-good-exponents pollutant-exponents))
                                           (/ (nth pollutant-prices (dec pollutant))
                                              num-of-ccs))))
-                                  pollutants)]
+                                  pollutants)
+        income (reduce + (map ((partial *) pollutant-prices pollutant-permissions (cc :income))))]
     (assoc cc :private-good-demands private-good-demands
               :public-good-demands public-good-demands
               :pollutant-permissions pollutant-permissions)))
+; TODO: Multiply prices and permissions in new income calculation
+; TODO: Just keep the income as is?
+; TODO: U’(z) = kzk-1 = 5jpzcc [pzccz]j-1 = U’(z) as formula for income
 
 (defn mean [L]
   (/ (reduce + L) (count L)))
@@ -301,6 +305,8 @@
       :labor-quantities labor-qs
       :pollutant-quantities pollutant-qs}))
 
+; TODO : rename "input-quantities" to "intermediate-input-quantities"
+
 (defn get-input-quantity [f ii [production-inputs input-quantities]]
   (->> ii
        first
@@ -340,8 +346,10 @@
                                                           (% :product))))
                                          (map :output)
                                          (reduce +)) 
-                     "pollutants"   (->> ccs
-                                         ))
+                     "pollutants" (/ (->> ccs
+                                         (map :pollutant-permissions)
+                                         (reduce +))
+                                     (count ccs)))
             demand (condp = type
                      "private-goods"  (->> ccs
                                    (mapv :private-good-demands)
@@ -371,6 +379,9 @@
                                            (mapv #(nth % (dec (first inputs))))
                                            (reduce +))
                                        (count ccs)))
+                     "pollutants" (->> wcs 
+                                       (mapv :pollutant-quantities)
+                                       (reduce +))
             j-offset (condp = type
                        "private-goods" 0
                        "intermediate" offset-1
