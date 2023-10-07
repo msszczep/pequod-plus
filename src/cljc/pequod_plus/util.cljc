@@ -54,7 +54,7 @@
            :last-years-supply (:supply-list t)
            :last-years-private-good-prices (:private-good-prices t)
            :last-years-public-good-prices (:public-good-prices t))
-           :last-years-pollutant-prices (:public-good))
+           :last-years-pollutant-prices (:public-good)) ; TODO Fix this line
 
 ; NB: Watch for pollutant-prices and scaling effects -- i.e., does a price affect all CCs or just one CC?
 (defn consume [private-goods private-good-prices public-goods public-good-prices pollutants pollutant-prices num-of-ccs cc]
@@ -380,7 +380,7 @@
                                            (mapv #(nth % (dec (first inputs))))
                                            (reduce +))
                                        (count ccs)))
-                     "pollutants" (->> wcs 
+                     "pollutants" (->> wcs
                                        (mapv :pollutant-quantities)
                                        (reduce +))
             j-offset (condp = type
@@ -479,7 +479,7 @@
              (merge-inputs-and-quantities :labor-quantity
                                           (nth (:production-inputs m) 2)
                                           (:labor-quantities m))
-             (merge-inputs-and-quantities :labor-quantity
+             (merge-inputs-and-quantities :pollutant-quantity
                                           (nth (:production-inputs m) 3)
                                           (:pollutant-quantities m))])
           (sum-input-quantities [qs pos type]
@@ -527,8 +527,12 @@
          input-producers (mapv (partial get-producers t 1) intermediate-inputs)
          natural-resources-supply (t :natural-resources-supply)
          labor-supply (t :labor-supply)
-         public-good-supply (mapv (partial get-producers t 2) (:public-good-types t))]
-     (vector private-producers input-producers natural-resources-supply labor-supply public-good-supply))))
+         public-good-supply (mapv (partial get-producers t 2) (:public-good-types t))
+         pollutant-permissions (->> t
+                                    :ccs
+                                    (map :pollutant-permissions)
+                                    (reduce +))]
+     (vector private-producers input-producers natural-resources-supply labor-supply public-good-supply pollutant-permissions))))
 
 (defn report-threshold [surplus-list supply-list demand-list]
   (->> (interleave (flatten surplus-list) (flatten demand-list) (flatten supply-list))
