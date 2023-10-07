@@ -7,6 +7,50 @@
    [clerk.core :as clerk]
    [accountant.core :as accountant]))
 
+;; -----
+;; Pequod Proper
+
+; TODO : De-atom-ize this
+; TODO : Add time-travelling
+
+(def globals
+  (atom {:init-private-good-price 700
+         :init-intermediate-price 700
+         :init-labor-price        700
+         :init-nature-price       700
+         :init-public-good-price  700
+         :init-pollutant-price    700
+
+         :private-goods             10
+         :intermediate-inputs       10
+         :resources                 10
+         :labors                    10
+         :public-goods              10
+         :pollutants                10
+
+         :private-good-prices      []
+         :intermediate-good-prices []
+         :labor-prices             []
+         :nature-prices            []
+         :public-good-prices       []
+         :pollutant-prices         []
+
+         :private-good-surpluses   []
+         :intermediate-input-surpluses []
+         :nature-surpluses         []
+         :labor-surpluses          []
+         :public-good-surpluses    []
+         :pollutant-surpluses      []
+
+         :threshold-report         []
+         :threshold-report-prev    []
+         :price-deltas             []
+         :wcs                      []
+         :ccs                      []
+         :iteration                0
+         :natural-resources-supply 0
+         :labor-supply             0}))
+
 ;; -------------------------
 ;; Routes
 
