@@ -316,6 +316,7 @@
 (defn get-deltas [J price-delta pdlist]
   (max 0.001 (min price-delta (Math/abs (* price-delta (nth pdlist J))))))
 
+; TODO Change to map?
 (defn update-surpluses-prices
   [type inputs prices wcs ccs natural-resources-supply labor-supply pdlist offset-1 offset-2 offset-3 offset-4]
   (loop [inputs inputs
@@ -387,14 +388,11 @@
                        "intermediate" offset-1
                        "nature" (+ offset-1 offset-2)
                        "labor" (+ offset-1 offset-2 offset-3)
-                       "public-goods" (+ offset-1 offset-2 offset-3 offset-4))
+                       "public-goods" (+ offset-1 offset-2 offset-3 offset-4)
+                       "pollutants" (+ offset-1 offset-2 offset-3 offset-4 offset-5))
             surplus (- supply demand)
             price-delta-to-use (- 1.05 (Math/pow 0.5 (/ (Math/abs (* 2 surplus)) (+ demand supply))))
-            delta (get-deltas (+ J j-offset) price-delta-to-use pdlist)
-            new-delta delta
-                      #_(cond (<= delta 1) delta
-                            :else        (last (take-while (partial < 1)
-                                                           (iterate #(/ % 2.0) delta))))
+            new-delta (get-deltas (+ J j-offset) price-delta-to-use pdlist)
             new-price (cond (pos? surplus) (* (- 1 new-delta) (nth prices (dec (first inputs))))
                             (neg? surplus) (* (+ 1 new-delta) (nth prices (dec (first inputs))))
                             :else (nth prices (dec (first inputs))))]
@@ -419,10 +417,10 @@
                                   (interleave (wc :production-inputs))
                                   (partition 2))
           input-count-r (count-inputs wc)
-          a (wc :a) ; TODO rename
-          s (wc :s) ; TODO rename
-          c (wc :c) ; TODO rename
-          k (wc :du) ; rename
+          total-factor-productivity (wc :total-factor-productivity)
+          disutility-of-effort-coefficient (wc :disutility-of-effort-coefficient)
+          effort-elasticity (wc :effort-elasticity)
+          disutility-of-effort-exponent (wc :disutility-of-effort-exponent)
           ps (into [] (flatten (map get-input-prices prices-and-indexes))) ; rename?
           b-input (wc :input-exponents)
           b-labor (wc :labor-exponents)
@@ -432,12 +430,107 @@
           λ (get-lambda-o wc private-good-prices input-prices public-good-prices)
           p-i (wc :production-inputs)]
       (condp = input-count-r
-        1 (merge wc (solution-1 a s c k ps b λ p-i))
-        2 (merge wc (solution-2 a s c k ps b λ p-i))
-        3 (merge wc (solution-3 a s c k ps b λ p-i))
-        4 (merge wc (solution-4 a s c k ps b λ p-i))
-        5 (merge wc (solution-5 a s c k ps b λ p-i))
-        6 (merge wc (solution-6 a s c k ps b λ p-i))
-        7 (merge wc (solution-7 a s c k ps b λ p-i))
-        8 (merge wc (solution-8 a s c k ps b λ p-i))
+        1 (merge wc (solution-1 total-factor-productivity disutility-of-effort-coefficient disutility-of-effort-exponent ps b λ p-i))
+        2 (merge wc (solution-2 total-factor-productivity disutility-of-effort-coefficient disutility-of-effort-exponent ps b λ p-i))
+        3 (merge wc (solution-3 total-factor-productivity disutility-of-effort-coefficient disutility-of-effort-exponent ps b λ p-i))
+        4 (merge wc (solution-4 total-factor-productivity disutility-of-effort-coefficient disutility-of-effort-exponent ps b λ p-i))
+        5 (merge wc (solution-5 total-factor-productivity disutility-of-effort-coefficient disutility-of-effort-exponent ps b λ p-i))
+        6 (merge wc (solution-6 total-factor-productivity disutility-of-effort-coefficient disutility-of-effort-exponent ps b λ p-i))
+        7 (merge wc (solution-7 total-factor-productivity disutility-of-effort-coefficient disutility-of-effort-exponent ps b λ p-i))
+        8 (merge wc (solution-8 total-factor-productivity disutility-of-effort-coefficient disutility-of-effort-exponent ps b λ p-i))
         (str "unexpected input-count value: " input-count-r)))))
+
+(defn update-percent-surplus [supply-list demand-list surplus-list]
+  (letfn [(force-to-one [n]
+            (let [cap 0.25]
+              (if (or (> n cap) (< n (- cap))) cap (Math/abs n))))]
+    (let [averaged-s-and-d (->> (interleave (flatten supply-list)
+                                           (flatten demand-list))
+                                (partition 2)
+                                (mapv mean))]
+      (->> (interleave (flatten surplus-list) averaged-s-and-d)
+           (partition 2)
+           (mapv #(/ (first %) (last %)))
+           (mapv force-to-one)))))
+
+(defn update-price-deltas [supply-list demand-list surplus-list]
+  (let [supply-list-means (map mean supply-list)
+        demand-list-means (map mean demand-list)
+        surplus-list-means (map mean surplus-list)
+        averaged-s-and-d (->> (interleave supply-list-means
+                                          demand-list-means)
+                              (partition 2)
+                              (map mean))]
+    (->> (interleave surplus-list-means averaged-s-and-d)
+         (partition 2)
+         (mapv #(Math/abs (/ (first %) (last %)))))))
+
+(defn get-demand-list [t]
+  (letfn [(merge-inputs-and-quantities [type ks vs]
+            (map #(hash-map :type type :key (first %) :value (last %))
+                 (partition 2 (interleave ks vs))))
+          (get-inputs-and-quantities [m]
+            [(merge-inputs-and-quantities :input-quantity
+                                          (first (:production-inputs m))
+                                          (:input-quantities m))
+             (merge-inputs-and-quantities :nature-quantity
+                                          (second (:production-inputs m))
+                                          (:nature-quantities m))
+             (merge-inputs-and-quantities :labor-quantity
+                                          (nth (:production-inputs m) 2)
+                                          (:labor-quantities m))
+             (merge-inputs-and-quantities :labor-quantity
+                                          (nth (:production-inputs m) 3)
+                                          (:pollutant-quantities m))])
+          (sum-input-quantities [qs pos type]
+            (->> qs
+                 (filter #(and (= pos (:key %)) (= type (:type %))))
+                 (map :value)
+                 (reduce +)))]
+    (let [im-goods-to-use (:intermediate-inputs t) ; already a vector from range
+          resources-to-use (range 1 (inc (:resources t)))
+          labors-to-use (range 1 (inc (:labors t)))
+          private-good-demands (->> t
+                             :private-goods
+                             (mapv (fn [i] (mapv #(nth (:private-good-demands %) (dec i)) (:ccs t))))
+                             (mapv (partial reduce +)))
+          all-quantities (->> t
+                              :wcs
+                              (map get-inputs-and-quantities)
+                              flatten)
+          input-quantity (mapv (fn [n] (sum-input-quantities all-quantities n :input-quantity)) im-goods-to-use)
+          nature-quantity (mapv (fn [n] (sum-input-quantities all-quantities n :nature-quantity)) resources-to-use)
+          labor-quantity (mapv (fn [n] (sum-input-quantities all-quantities n :labor-quantity)) labors-to-use)
+          public-good-demands
+                     (mapv (fn [public-good]
+                             (util/mean (map #(nth (:public-good-demands %) (dec public-good))
+                                         (t :ccs))))
+                           (t :public-good-types))]
+      [private-good-demands
+       input-quantity
+       nature-quantity
+       labor-quantity
+       public-good-demands])))
+
+(defn get-supply-list [t]
+  (letfn [(get-producers [t industry product]
+            (->> t
+                 :wcs
+                 (filter #(and (= industry (% :industry))
+                               (= product (% :product))))
+                 (map :output)
+                 flatten
+                 (reduce +)))]
+   (let [private-goods (:private-goods t)
+         private-producers (mapv (partial get-producers t 0) private-goods)
+         intermediate-inputs (:intermediate-inputs t)
+         input-producers (mapv (partial get-producers t 1) intermediate-inputs)
+         natural-resources-supply (t :natural-resources-supply)
+         labor-supply (t :labor-supply)
+         public-good-supply (mapv (partial get-producers t 2) (:public-good-types t))]
+     (vector private-producers input-producers natural-resources-supply labor-supply public-good-supply))))
+
+(defn report-threshold [surplus-list supply-list demand-list]
+  (->> (interleave (flatten surplus-list) (flatten demand-list) (flatten supply-list))
+       (partition 3)
+       (mapv #(* 100 (/ (Math/abs (* 2 (first %))) (+ (second %) (last %)))))))
