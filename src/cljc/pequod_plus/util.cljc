@@ -306,6 +306,7 @@
       :pollutant-quantities pollutant-qs}))
 
 ; TODO : rename "input-quantities" to "intermediate-input-quantities"
+; TODO : Add automated tests to all functions in this file.
 
 (defn get-input-quantity [f ii [production-inputs input-quantities]]
   (->> ii
@@ -318,7 +319,7 @@
 
 ; TODO Change to map?
 (defn update-surpluses-prices
-  [type inputs prices wcs ccs natural-resources-supply labor-supply pdlist offset-1 offset-2 offset-3 offset-4]
+  [type inputs prices wcs ccs natural-resources-supply labor-supply pdlist offset-1 offset-2 offset-3 offset-4 offset-5]
   (loop [inputs inputs
          prices prices
          surpluses []
@@ -490,6 +491,7 @@
     (let [im-goods-to-use (:intermediate-inputs t) ; already a vector from range
           resources-to-use (range 1 (inc (:resources t)))
           labors-to-use (range 1 (inc (:labors t)))
+          pollutants-to-use (range 1 (inc (:pollutants t)))
           private-good-demands (->> t
                              :private-goods
                              (mapv (fn [i] (mapv #(nth (:private-good-demands %) (dec i)) (:ccs t))))
@@ -505,12 +507,14 @@
                      (mapv (fn [public-good]
                              (util/mean (map #(nth (:public-good-demands %) (dec public-good))
                                          (t :ccs))))
-                           (t :public-good-types))]
+                           (t :public-good-types))
+          pollutants (mapv (fn [n] (sum-input-quantities all-quantities n :pollutant-quantity)) pollutant-to-use)]
       [private-good-demands
        input-quantity
        nature-quantity
        labor-quantity
-       public-good-demands])))
+       public-good-demands
+       pollutants])))
 
 (defn get-supply-list [t]
   (letfn [(get-producers [t industry product]
@@ -538,12 +542,3 @@
   (->> (interleave (flatten surplus-list) (flatten demand-list) (flatten supply-list))
        (partition 3)
        (mapv #(* 100 (/ (Math/abs (* 2 (first %))) (+ (second %) (last %)))))))
-
-(defn compute-gdp [supply-list private-good-prices public-good-prices]
-  (let [[private-good-supply _ _ _ public-good-supply] supply-list]
-    (->> public-good-prices
-         (concat private-good-prices)
-         (interleave (concat private-good-supply public-good-supply))
-         (partition 2)
-         (map (fn [[a b]] (* a b)))
-         (apply +))))

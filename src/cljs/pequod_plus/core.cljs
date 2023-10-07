@@ -43,13 +43,51 @@
          :pollutant-surpluses      []
 
          :threshold-report         []
-         :threshold-report-prev    []
          :price-deltas             []
          :wcs                      []
          :ccs                      []
          :iteration                0
          :natural-resources-supply 0
          :labor-supply             0}))
+
+(defn iterate-plan [t]
+  (let [t2 (assoc t :ccs (map (partial util/consume (t :private-goods) (t :private-good-prices) (t :public-good-types) (t :public-good-prices) (t :pollutants) (t :pollutant-prices) (count (t :ccs)))
+                              (t :ccs))
+                    :wcs (map (partial util/proposal (t :private-good-prices) (t :intermediate-good-prices) (t :nature-prices) (t :labor-prices) (t :public-good-prices) (t :pollutant-prices))
+                              (t :wcs)))
+        {private-good-prices :prices, private-good-surpluses :surpluses, private-good-new-deltas :new-deltas} (util/update-surpluses-prices "private-goods" (t2 :private-goods) (t2 :private-good-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
+        {intermediate-good-prices :prices, intermediate-good-surpluses :surpluses, intermediate-good-new-deltas :new-deltas} (util/update-surpluses-prices "intermediate" (t2 :intermediate-inputs) (t2 :intermediate-good-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
+        {nature-prices :prices, nature-surpluses :surpluses, nature-new-deltas :new-deltas} (util/update-surpluses-prices "nature" (t2 :nature-types) (t2 :nature-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
+        {labor-prices :prices, labor-surpluses :surpluses, labor-new-deltas :new-deltas} (util/update-surpluses-prices "labor" (t2 :labor-types) (t2 :labor-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
+        {public-good-prices :prices, public-good-surpluses :surpluses, public-good-new-deltas :new-deltas} (util/update-surpluses-prices "public-goods" (t2 :public-good-types) (t2 :public-good-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
+        {pollutant-prices :prices, pollutant-surpluses :surpluses, pollutant-new-deltas :new-deltas} (util/update-surpluses-prices "pollutant" (t2 :public-good-types) (t2 :public-good-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
+        surplus-list (vector private-good-surpluses intermediate-good-surpluses nature-surpluses labor-surpluses public-good-surpluses pollutant-surpluses)
+        supply-list (util/get-supply-list t2)
+        demand-list (util/get-demand-list t2)
+        new-price-deltas (util/update-price-deltas supply-list demand-list surplus-list) ; TODO : Replace by aggregating above deltas?
+        new-percent-surplus (util/update-percent-surplus supply-list demand-list surplus-list)
+        threshold-report (util/report-threshold surplus-list supply-list demand-list)
+        iteration (inc (:iteration t2))
+        ]
+    (assoc t2 :private-good-prices private-good-prices
+              :private-good-surpluses private-good-surpluses
+              :intermediate-good-prices intermediate-good-prices
+              :intermediate-good-surpluses intermediate-good-surpluses
+              :nature-prices nature-prices
+              :nature-surpluses nature-surpluses
+              :labor-prices labor-prices
+              :labor-surpluses labor-surpluses
+              :public-good-prices public-good-prices
+              :public-good-surpluses public-good-surpluses
+              :pollutant-prices pollutant-prices
+              :pollutant-surpluses pollutant-surpluses
+              :demand-list demand-list
+              :surplus-list surplus-list
+              :supply-list supply-list
+              :threshold-report threshold-report
+              :price-deltas new-price-deltas
+              :pdlist new-percent-surplus
+              :iteration iteration)))
 
 ;; -------------------------
 ;; Routes
