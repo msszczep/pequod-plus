@@ -89,6 +89,29 @@
               :pdlist new-percent-surplus
               :iteration iteration)))
 
+(defn truncate-number [n]
+  (gstring/format "%.3f" n))
+
+(defn partition-by-ten
+  [seq-to-use]
+  (if (empty? seq-to-use)
+    seq-to-use
+    (->> seq-to-use
+         flatten
+         (mapv truncate-number)
+         (partition-all 10)
+         (mapv (partial into [])))))
+
+(defn show-color [threshold-report-excerpt]
+  (let [tre (first threshold-report-excerpt)
+        red "#ff4d4d"]
+    (cond (empty? tre) red
+          (every? #(< % 3) tre) "#4dd2ff"
+          (every? #(< % 5) tre) "lawngreen"
+          (every? #(< % 10) tre) "gold"
+          (every? #(< % 20) tre) "darkorange"
+          :else red)))
+
 ;; -------------------------
 ;; Routes
 
