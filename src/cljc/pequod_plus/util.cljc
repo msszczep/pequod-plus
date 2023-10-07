@@ -534,3 +534,12 @@
   (->> (interleave (flatten surplus-list) (flatten demand-list) (flatten supply-list))
        (partition 3)
        (mapv #(* 100 (/ (Math/abs (* 2 (first %))) (+ (second %) (last %)))))))
+
+(defn compute-gdp [supply-list private-good-prices public-good-prices]
+  (let [[private-good-supply _ _ _ public-good-supply] supply-list]
+    (->> public-good-prices
+         (concat private-good-prices)
+         (interleave (concat private-good-supply public-good-supply))
+         (partition 2)
+         (map (fn [[a b]] (* a b)))
+         (apply +))))
