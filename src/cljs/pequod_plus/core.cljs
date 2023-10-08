@@ -92,8 +92,7 @@
 (defn truncate-number [n]
   (gstring/format "%.3f" n))
 
-(defn partition-by-ten
-  [seq-to-use]
+(defn divvy-up [seq-to-use]
   (if (empty? seq-to-use)
     seq-to-use
     (->> seq-to-use
@@ -111,6 +110,97 @@
           (every? #(< % 10) tre) "gold"
           (every? #(< % 20) tre) "darkorange"
           :else red)))
+
+(defn all-buttons []
+  (let [experiment-to-use (atom "ex001")]
+    [:div
+     [:table
+       [:tr
+         [:td [:select {:field :list
+               :id :experiment
+               :on-change #(reset! experiment-to-use (-> % .-target .-value))}
+          [:option {:key :ex006} "ex001"]
+          ]]
+         [:td [:input {:type "button" :value "Setup"
+              :on-click #(swap! globals util/setup globals experiment-to-use)}]]
+         [:td [:input {:type "button" :value "Iterate"
+           :on-click #(swap! globals iterate-plan globals)}]]
+         [:td [:input {:type "button" :value "Augmented reset"
+           :on-click #(swap! globals util/augmented-reset globals)}]]
+         ]
+        [:tr
+         [:td (str "WCs: " (count (get @globals :wcs)))]
+         [:td (str "CCs: " (count (get @globals :ccs)))]]]]))
+
+(defn show-globals []
+    (let [td-cell-style {:border "1px solid #ddd" :text-align "center" :vertical-align "middle" :padding "8px"}] 
+     [:div [:h4 "Welcome to pequod-plus"]
+           (all-buttons)
+           [:p]
+           [:table {:style {:width "100%" :padding "8px" :border "1px solid #ddd"}}
+             [:tr
+               [:th {:style td-cell-style} "Iteration: " (get @globals :iteration)]
+               [:th {:style td-cell-style} "Private Goods"]
+               [:th {:style td-cell-style} "Intermediate Inputs"]
+               [:th {:style td-cell-style} "Nature"]
+               [:th {:style td-cell-style} "Labor"]
+               [:th {:style td-cell-style} "Public Goods"]
+               [:th {:style td-cell-style} "Pollutants"]
+             ]
+             [:tr {:style {:border "1px solid #ddd"}}
+              [:td {:style (assoc td-cell-style :font-weight "bold")} "Prices"]
+              [:td {:style td-cell-style} (or (str (mapv truncate-number (get @globals :private-good-prices))) "")]
+              [:td {:style td-cell-style} (or (str (mapv truncate-number (get @globals :intermediate-good-prices))) "")]
+              [:td {:style td-cell-style} (or (str (mapv truncate-number (get @globals :nature-prices))) "")]
+              [:td {:style td-cell-style} (or (str (mapv truncate-number (get @globals :labor-prices))) "")]
+              [:td {:style td-cell-style} (or (str (mapv truncate-number (get @globals :public-good-prices))) "")]
+              [:td {:style td-cell-style} (or (str (mapv truncate-number (get @globals :pollutant-prices))) "")]
+             ]
+             ; TODO : restore new deltas?
+             [:tr {:style {:border "1px solid #ddd"}}
+              [:td {:style (assoc td-cell-style :font-weight "bold")} "PD List"]
+              [:td {:style td-cell-style} (str (or (take 1 (divvy-up (get @globals :pdlist))) "[]"))]
+              [:td {:style td-cell-style} (str (or (drop 1 (take 2 (divvy-up (get @globals :pdlist)))) "[]"))]
+              [:td {:style td-cell-style} (str (or (drop 2 (take 3 (divvy-up (get @globals :pdlist)))) "[]"))]
+              [:td {:style td-cell-style} (str (or (drop 3 (take 4 (divvy-up (get @globals :pdlist)))) "[]"))]
+              [:td {:style td-cell-style} (str (or (drop 4 (take 5 (divvy-up (get @globals :pdlist)))) "[]"))]
+              [:td {:style td-cell-style} (str (or (drop 5 (take 6 (divvy-up (get @globals :pdlist)))) "[]"))]
+             ]
+             [:tr {:style {:border "1px solid #ddd"}}
+              [:td {:style (assoc td-cell-style :font-weight "bold")} "Supply"]
+              [:td {:style td-cell-style} (str (or (take 1 (divvy-up (get @globals :supply-list))) "[]"))]
+              [:td {:style td-cell-style} (str (or (drop 1 (take 2 (divvy-up (get @globals :supply-list)))) "[]"))]
+              [:td {:style td-cell-style} (str (or (drop 2 (take 3 (divvy-up (get @globals :supply-list)))) "[]"))]
+              [:td {:style td-cell-style} (str (or (drop 3 (take 4 (divvy-up (get @globals :supply-list)))) "[]"))]
+              [:td {:style td-cell-style} (str (or (drop 4 (take 5 (divvy-up (get @globals :supply-list)))) "[]"))]
+              [:td {:style td-cell-style} (str (or (drop 5 (take 6 (divvy-up (get @globals :supply-list)))) "[]"))]
+             ]
+             [:tr {:style {:border "1px solid #ddd"}}
+              [:td {:style (assoc td-cell-style :font-weight "bold")} "Demand"]
+              [:td {:style td-cell-style} (str (or (take 1 (divvy-up (get @globals :demand-list))) "[]"))]
+              [:td {:style td-cell-style} (str (or (drop 1 (take 2 (divvy-up (get @globals :demand-list)))) "[]"))]
+              [:td {:style td-cell-style} (str (or (drop 2 (take 3 (divvy-up (get @globals :demand-list)))) "[]"))]
+              [:td {:style td-cell-style} (str (or (drop 3 (take 4 (divvy-up (get @globals :demand-list)))) "[]"))]
+              [:td {:style td-cell-style} (str (or (drop 4 (take 5 (divvy-up (get @globals :demand-list)))) "[]"))]
+              [:td {:style td-cell-style} (str (or (drop 5 (take 6 (divvy-up (get @globals :demand-list)))) "[]"))]
+             ]
+             [:tr {:style {:border "1px solid #ddd"}}
+              [:td {:style (assoc td-cell-style :font-weight "bold")} "Surplus"]
+              [:td {:style td-cell-style} (str (or (take 1 (divvy-up (get @globals :surplus-list))) "[]"))]
+              [:td {:style td-cell-style} (str (or (drop 1 (take 2 (divvy-up (get @globals :surplus-list)))) "[]"))]
+              [:td {:style td-cell-style} (str (or (drop 2 (take 3 (divvy-up (get @globals :surplus-list)))) "[]"))]
+              [:td {:style td-cell-style} (str (or (drop 3 (take 4 (divvy-up (get @globals :surplus-list)))) "[]"))]
+              [:td {:style td-cell-style} (str (or (drop 4 (take 5 (divvy-up (get @globals :surplus-list)))) "[]"))]
+              [:td {:style td-cell-style} (str (or (drop 5 (take 6 (divvy-up (get @globals :surplus-list)))) "[]"))]
+             ]
+             [:tr {:style {:border "1px solid #ddd"}}
+              [:td {:style (assoc td-cell-style :font-weight "bold")} "Percent Surplus / Threshold Met?"]
+              [:td {:style (assoc td-cell-style :background (show-color (take 1 (divvy-up (get @globals :threshold-report)))))} (str (or (take 1 (divvy-up (get @globals :threshold-report))) "[]"))]
+              [:td {:style (assoc td-cell-style :background (show-color (drop 1 (take 2 (divvy-up (get @globals :threshold-report))))))} (str (or (drop 1 (take 2 (divvy-up (get @globals :threshold-report)))) "[]"))]
+              [:td {:style (assoc td-cell-style :background (show-color (drop 2 (take 3 (divvy-up (get @globals :threshold-report))))))} (str (or (drop 2 (take 3 (divvy-up (get @globals :threshold-report)))) "[]"))]
+              [:td {:style (assoc td-cell-style :background (show-color (drop 3 (take 4 (divvy-up (get @globals :threshold-report))))))} (str (or (drop 3 (take 4 (divvy-up (get @globals :threshold-report)))) "[]"))]
+              [:td {:style (assoc td-cell-style :background (show-color (drop 4 (take 5 (divvy-up (get @globals :threshold-report))))))} (str (or (drop 4 (take 5 (divvy-up (get @globals :threshold-report)))) "[]"))]
+              [:td {:style (assoc td-cell-style :background (show-color (drop 5 (take 6 (divvy-up (get @globals :threshold-report))))))} (str (or (drop 5 (take 6 (divvy-up (get @globals :threshold-report)))) "[]"))]]]]))
 
 ;; -------------------------
 ;; Routes
