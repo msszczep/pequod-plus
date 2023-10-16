@@ -1,8 +1,10 @@
 # pequod-plus
 
-An improved edition of pequod-cljs, the participatory planning procedure prototype (in Clojure and Clojurescript)
+An improved edition of pequod-cljs, the participatory planning procedure prototype (in Clojure and Clojurescript).
 
-``
+To learn more about the model of a participatory economy, visit [participatoryeconomy.org](https://www.participatoryeconomy.org).
+
+```
 lein new reagent pequod-plus +test +figwheel +devcards +cider
 
 TODO:
@@ -10,6 +12,14 @@ TODO:
 + Build cljc tests
 + Build middleware logic (Clojurey!)
 + Build frontend
+
+```
+
+## Quickstart
+
+1.  Generate worker councils and consumer councils:
+
+```
 
 ```
 

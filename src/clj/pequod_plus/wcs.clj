@@ -15,15 +15,16 @@
 ; range for 0.5 / number of inputs (length of flattened production-inputs)
 ;  up to 1 / number of inputs
 
-(defn continue-wc-setup [intermediate-inputs nature-types labor-types pollutants wc]
+(defn continue-wc-setup [intermediate-input-types nature-types labor-types pollutants wc]
   "Assumes wc is a map"
-  (letfn [(get-random-subset [input-seq input-type]
-            (let [take-num (if (= input-type :intermediate-inputs) 4 2)]
-              (->> input-seq
-                   shuffle
-                   (take (inc (rand-int take-num)))
-                   sort
-                   vec)))
+  (letfn [(get-random-subsets []
+            (let [s (->> [1 1 1 1 2 2 3 3 4 4]
+                         shuffle
+                         (take (inc (rand-int 4)))
+                         frequencies)]
+              (->> [1 2 3 4]
+                   (map #(get s % 0))
+                   (mapv inc))))
           (rand-range [start end]
             (+ start (clojure.core/rand (- end start))))
           (generate-exponents [n i inputs]
@@ -31,10 +32,11 @@
                  repeatedly
                  (take (count (nth inputs i)))
                  vec))]
-    (let [production-inputs (vector (get-random-subset intermediate-inputs :intermediate-inputs)
-                                    (get-random-subset nature-types :nature-types)
-                                    (get-random-subset labor-types :labor-types)
-                                    (get-random-subset pollutants :pollutants))
+    (let [[s1 s2 s3 s4] (get-random-subsets)
+          production-inputs (vector (into [] (sort (take s1 (shuffle intermediate-input-types))))
+                                    (into [] (sort (take s2 (shuffle nature-types))))
+                                    (into [] (sort (take s3 (shuffle labor-types))))
+                                    (into [] (sort (take s4 (shuffle pollutants)))))
           production-inputs-count (->> production-inputs
                                        flatten
                                        count)
@@ -54,8 +56,6 @@
                  :effort 0.5
                  :output 0
                  :labor-quantities [0]}))))
-
-; (def input-cats (into [] (range 1 101)))
 
 ; TODO : update input here?
 (defn create-wcs-bulk [num-ind-0 num-ind-1 num-ind-2]
