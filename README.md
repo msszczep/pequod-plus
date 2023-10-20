@@ -8,20 +8,34 @@ To learn more about the model of a participatory economy, visit [participatoryec
 lein new reagent pequod-plus +test +figwheel +devcards +cider
 
 TODO:
-+ Build cljc utilities
 + Build cljc tests
 + Build middleware logic (Clojurey!)
-+ Build frontend
 
 ```
 
 ## Quickstart
 
+These are the instructions
+
 1.  Generate worker councils and consumer councils:
 
 ```
+lein run -m pequod-plus.gen [NAME-SPACE-TO-USE]
+```
+
+For example:
 
 ```
+time lein run -m pequod-plus.gen ppex001 > ppex001.cljs
+```
+
+2.  Move the councils into `src/cljs/pequod_plus`
+
+```
+mv ppex001.cljs src/cljs/pequod_plus/ppex001.cljs
+```
+
+3.  Run `lein figwheel`, as listed below.
 
 ## Development mode
 

@@ -54,13 +54,15 @@
            :last-years-supply (:supply-list t)
            :last-years-private-good-prices (:private-good-prices t)
            :last-years-public-good-prices (:public-good-prices t))
-           :last-years-pollutant-prices (:public-good)) ; TODO Fix this line
+           :last-years-pollutant-prices (:public-good t))
 
 ; NB: Watch for pollutant-prices and scaling effects -- i.e., does a price affect all CCs or just one CC?
+; income (reduce + (map ((partial *) pollutant-prices pollutant-permissions (cc :income))))
 (defn consume [private-goods private-good-prices public-goods public-good-prices pollutants pollutant-prices num-of-ccs cc]
   (let [private-good-exponents (cc :private-good-exponents)
         public-good-exponents (cc :public-good-exponents)
         pollutant-exponents (cc :pollutant-exponents)
+        income (cc :income)
         private-good-demands (mapv 
                                (fn [private-good]
                                  (/ (* income (nth private-good-exponents (dec private-good)))
@@ -74,12 +76,12 @@
                                              num-of-ccs))))
                                   public-goods)
         pollutant-permissions (mapv (fn [pollutant]
-                                    (/ (* income (nth pollutant-exponents (dec pollutant)))
-                                       (* (apply + (concat private-good-exponents public-good-exponents pollutant-exponents))
-                                          (/ (nth pollutant-prices (dec pollutant))
-                                             num-of-ccs))))
+                                      (/ (* income (nth pollutant-exponents (dec pollutant)))
+                                         (* (apply + (concat private-good-exponents public-good-exponents pollutant-exponents))
+                                            (/ (nth pollutant-prices (dec pollutant))
+                                               num-of-ccs))))
                                   pollutants)
-        income (reduce + (map ((partial *) pollutant-prices pollutant-permissions (cc :income))))]
+]
     (assoc cc :private-good-demands private-good-demands
               :public-good-demands public-good-demands
               :pollutant-permissions pollutant-permissions)))
@@ -89,27 +91,6 @@
 
 (defn mean [L]
   (/ (reduce + L) (count L)))
-
-(defn setup [t _ experiment]
-  (let [intermediate-inputs (vec (range 1 (inc (t :intermediate-inputs))))
-        nature-types (vec (range 1 (inc (t :resources))))
-        labor-types (vec (range 1 (inc (t :labors))))
-        private-goods (vec (range 1 (inc (t :private-goods))))
-        public-good-types (vec (range 1 (inc (t :public-goods))))
-        pollutant-types (vec (range 1 (inc (t :pollutants))))]
-    (-> t
-        initialize-prices
-        (assoc :delta-delay 5
-               :natural-resources-supply (repeat (t :resources) 1000)
-               :labor-supply (repeat (t :labors) 1000)
-               :private-goods private-goods
-               :intermediate-inputs intermediate-inputs
-               :nature-types nature-types
-               :labor-types labor-types
-               :public-good-types public-good-types
-               :surplus-threshold 0.05
-               :ccs (add-ids ex001/ccs)
-               :wcs (add-ids ex001/wcs)))))
 
 (defn allot-production-quantities [production-inputs xs]
   (let [[num-input-quantities num-nature-quantities num-labor-quantities num-pollutant-quantities] (map count production-inputs)
@@ -289,7 +270,7 @@
         x7 (Math/pow Math/E (/ (+ (- (* k (Math/log a))) (* b1 k (Math/log b7)) (* b2 k (Math/log b7)) (* b3 k (Math/log b7)) (* b4 k (Math/log b7)) (* b5 k (Math/log b7)) (* b6 k (Math/log b7)) (* b8 k (Math/log b7)) (* c (Math/log b7)) (- (* k (Math/log b7))) (- (* b1 k (Math/log b1))) (- (* b2 k (Math/log b2))) (- (* b3 k (Math/log b3))) (- (* b4 k (Math/log b4))) (- (* b5 k (Math/log b5))) (- (* b6 k (Math/log b6))) (- (* b8 k (Math/log b8))) (- (* c (Math/log c))) (* c (Math/log k)) (- (* b1 k (Math/log p7))) (- (* b2 k (Math/log p7))) (- (* b3 k (Math/log p7))) (- (* b4 k (Math/log p7))) (- (* b5 k (Math/log p7))) (- (* b6 k (Math/log p7))) (- (* b8 k (Math/log p7))) (* k (Math/log p7)) (- (* c (Math/log p7))) (* b1 k (Math/log p1)) (* b2 k (Math/log p2)) (* b3 k (Math/log p3)) (* b4 k (Math/log p4)) (* b5 k (Math/log p5)) (* b6 k (Math/log p6)) (* b8 k (Math/log p8)) (* c (Math/log s)) (- (* k (Math/log λ)))) (+ c (- k) (* k b1) (* k b2) (* k b3) (* k b4) (* k b5) (* k b6) (* k b7) (* k b8))))
         x8 (Math/pow Math/E (/ (+ (- (* k (Math/log a))) (* b1 k (Math/log b8)) (* b2 k (Math/log b8)) (* b3 k (Math/log b8)) (* b4 k (Math/log b8)) (* b5 k (Math/log b8)) (* b6 k (Math/log b8)) (* b7 k (Math/log b8)) (* c (Math/log b8)) (- (* k (Math/log b8))) (- (* b1 k (Math/log b1))) (- (* b2 k (Math/log b2))) (- (* b3 k (Math/log b3))) (- (* b4 k (Math/log b4))) (- (* b5 k (Math/log b5))) (- (* b6 k (Math/log b6))) (- (* b7 k (Math/log b7))) (- (* c (Math/log c))) (* c (Math/log k)) (- (* b1 k (Math/log p8))) (- (* b2 k (Math/log p8))) (- (* b3 k (Math/log p8))) (- (* b4 k (Math/log p8))) (- (* b5 k (Math/log p8))) (- (* b6 k (Math/log p8))) (- (* b7 k (Math/log p8))) (* k (Math/log p8)) (- (* c (Math/log p8))) (* b1 k (Math/log p1)) (* b2 k (Math/log p2)) (* b3 k (Math/log p3)) (* b4 k (Math/log p4)) (* b5 k (Math/log p5)) (* b6 k (Math/log p6)) (* b7 k (Math/log p7)) (* c (Math/log s)) (- (* k (Math/log λ)))) (+ c (- k) (* k b1) (* k b2) (* k b3) (* k b4) (* k b5) (* k b6) (* k b7) (* k b8))))
         effort (Math/pow Math/E (/ (+ (- (* (Math/log a))) (- (* b1 (Math/log b1))) (- (* b2 (Math/log b2))) (- (* b3 (Math/log b3))) (- (* b4 (Math/log b4))) (- (* b5 (Math/log b5))) (- (* b6 (Math/log b6))) (- (* b7 (Math/log b7))) (- (* b8 (Math/log b8))) (- (* (Math/log c))) (* b1 (Math/log c)) (* b2 (Math/log c)) (* b3 (Math/log c)) (* b4 (Math/log c)) (* b5 (Math/log c)) (* b6 (Math/log c)) (* b7 (Math/log c)) (* b8 (Math/log c)) (* (Math/log k)) (* b1 (Math/log k)) (* b2 (Math/log k)) (* b3 (Math/log k)) (* b4 (Math/log k)) (* b5 (Math/log k)) (* b6 (Math/log k)) (* b7 (Math/log k)) (* b8 (Math/log k)) (* b1 (Math/log p1)) (* b2 (Math/log p2)) (* b3 (Math/log p3)) (* b4 (Math/log p4)) (* b5 (Math/log p5)) (* b6 (Math/log p6)) (* b7 (Math/log p7)) (* b8 (Math/log p8)) (* (Math/log s)) (* b1 (Math/log s)) (* b2 (Math/log s)) (* b3 (Math/log s)) (* b4 (Math/log s)) (* b5 (Math/log s)) (* b6 (Math/log s)) (* b7 (Math/log s)) (* b8 (Math/log s)) (- (* (Math/log λ)))) (+ c (- k) (* k b1) (* k b2) (* k b3) (* k b4) (* k b5) (* k b6) (* k b7) (* k b8))))
-        [intermedate-input-qs nature-qs labor-qs pollutant-qs] (allot-production-quantities p-i [x1 x2 x3 x4 x5 x6 x7 x8])]
+        [intermediate-input-qs nature-qs labor-qs pollutant-qs] (allot-production-quantities p-i [x1 x2 x3 x4 x5 x6 x7 x8])]
      {:output output
       :x1 x1
       :x2 x2
@@ -309,10 +290,11 @@
 ; TODO : Add automated tests to all functions in this file.
 
 (defn get-input-quantity [f ii [production-inputs input-quantities]]
-  (->> ii
-       first
-       (.indexOf (f production-inputs))
-       (nth input-quantities)))
+  (let [_ (println "GIQ/IQ: " input-quantities)]
+   (->> ii
+        first
+        (.indexOf (f production-inputs))
+        (nth input-quantities))))
 
 (defn get-deltas [J price-delta pdlist]
   (max 0.001 (min price-delta (Math/abs (* price-delta (nth pdlist J))))))
@@ -380,10 +362,10 @@
                                            (mapv :public-good-demands)
                                            (mapv #(nth % (dec (first inputs))))
                                            (reduce +))
-                                       (count ccs)))
+                                       (count ccs))
                      "pollutants" (->> wcs
                                        (mapv :pollutant-quantities)
-                                       (reduce +))
+                                       (reduce +)))
             j-offset (condp = type
                        "private-goods" 0
                        "intermediate" offset-1
@@ -431,14 +413,14 @@
           λ (get-lambda-o wc private-good-prices input-prices public-good-prices)
           p-i (wc :production-inputs)]
       (condp = input-count-r
-        1 (merge wc (solution-1 total-factor-productivity disutility-of-effort-coefficient disutility-of-effort-exponent ps b λ p-i))
-        2 (merge wc (solution-2 total-factor-productivity disutility-of-effort-coefficient disutility-of-effort-exponent ps b λ p-i))
-        3 (merge wc (solution-3 total-factor-productivity disutility-of-effort-coefficient disutility-of-effort-exponent ps b λ p-i))
-        4 (merge wc (solution-4 total-factor-productivity disutility-of-effort-coefficient disutility-of-effort-exponent ps b λ p-i))
-        5 (merge wc (solution-5 total-factor-productivity disutility-of-effort-coefficient disutility-of-effort-exponent ps b λ p-i))
-        6 (merge wc (solution-6 total-factor-productivity disutility-of-effort-coefficient disutility-of-effort-exponent ps b λ p-i))
-        7 (merge wc (solution-7 total-factor-productivity disutility-of-effort-coefficient disutility-of-effort-exponent ps b λ p-i))
-        8 (merge wc (solution-8 total-factor-productivity disutility-of-effort-coefficient disutility-of-effort-exponent ps b λ p-i))
+        1 (merge wc (solution-1 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
+        2 (merge wc (solution-2 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
+        3 (merge wc (solution-3 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
+        4 (merge wc (solution-4 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
+        5 (merge wc (solution-5 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
+        6 (merge wc (solution-6 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
+        7 (merge wc (solution-7 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
+        8 (merge wc (solution-8 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
         (str "unexpected input-count value: " input-count-r)))))
 
 (defn update-percent-surplus [supply-list demand-list surplus-list]
@@ -505,10 +487,10 @@
           labor-quantity (mapv (fn [n] (sum-input-quantities all-quantities n :labor-quantity)) labors-to-use)
           public-good-demands
                      (mapv (fn [public-good]
-                             (util/mean (map #(nth (:public-good-demands %) (dec public-good))
+                             (mean (map #(nth (:public-good-demands %) (dec public-good))
                                          (t :ccs))))
                            (t :public-good-types))
-          pollutants (mapv (fn [n] (sum-input-quantities all-quantities n :pollutant-quantity)) pollutant-to-use)]
+          pollutants (mapv (fn [n] (sum-input-quantities all-quantities n :pollutant-quantity)) pollutants-to-use)]
       [private-good-demands
        input-quantity
        nature-quantity

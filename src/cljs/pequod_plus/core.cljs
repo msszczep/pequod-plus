@@ -5,7 +5,10 @@
    [reagent.session :as session]
    [reitit.frontend :as reitit]
    [clerk.core :as clerk]
-   [accountant.core :as accountant]))
+   [accountant.core :as accountant]
+   [goog.string :as gstring]
+   [pequod-plus.util :as util]
+   [pequod-plus.ppex001 :as ppex001]))
 
 ;; -----
 ;; Pequod Proper
@@ -51,16 +54,14 @@
          :labor-supply             0}))
 
 (defn iterate-plan [t]
-  (let [t2 (assoc t :ccs (map (partial util/consume (t :private-goods) (t :private-good-prices) (t :public-good-types) (t :public-good-prices) (t :pollutants) (t :pollutant-prices) (count (t :ccs)))
-                              (t :ccs))
-                    :wcs (map (partial util/proposal (t :private-good-prices) (t :intermediate-good-prices) (t :nature-prices) (t :labor-prices) (t :public-good-prices) (t :pollutant-prices))
-                              (t :wcs)))
+  (let [t2 (assoc t :ccs (map (partial util/consume (t :private-goods) (t :private-good-prices) (t :public-good-types) (t :public-good-prices) (t :pollutant-types) (t :pollutant-prices) (count (t :ccs))) (t :ccs))
+                    :wcs (map (partial util/proposal (t :private-good-prices) (t :intermediate-good-prices) (t :nature-prices) (t :labor-prices) (t :public-good-prices) (t :pollutant-prices)) (t :wcs)))
         {private-good-prices :prices, private-good-surpluses :surpluses, private-good-new-deltas :new-deltas} (util/update-surpluses-prices "private-goods" (t2 :private-goods) (t2 :private-good-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
         {intermediate-good-prices :prices, intermediate-good-surpluses :surpluses, intermediate-good-new-deltas :new-deltas} (util/update-surpluses-prices "intermediate" (t2 :intermediate-inputs) (t2 :intermediate-good-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
         {nature-prices :prices, nature-surpluses :surpluses, nature-new-deltas :new-deltas} (util/update-surpluses-prices "nature" (t2 :nature-types) (t2 :nature-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
         {labor-prices :prices, labor-surpluses :surpluses, labor-new-deltas :new-deltas} (util/update-surpluses-prices "labor" (t2 :labor-types) (t2 :labor-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
         {public-good-prices :prices, public-good-surpluses :surpluses, public-good-new-deltas :new-deltas} (util/update-surpluses-prices "public-goods" (t2 :public-good-types) (t2 :public-good-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
-        {pollutant-prices :prices, pollutant-surpluses :surpluses, pollutant-new-deltas :new-deltas} (util/update-surpluses-prices "pollutant" (t2 :public-good-types) (t2 :public-good-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
+        {pollutant-prices :prices, pollutant-surpluses :surpluses, pollutant-new-deltas :new-deltas} (util/update-surpluses-prices "pollutants" (t2 :pollutant-types) (t2 :pollutant-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
         surplus-list (vector private-good-surpluses intermediate-good-surpluses nature-surpluses labor-surpluses public-good-surpluses pollutant-surpluses)
         supply-list (util/get-supply-list t2)
         demand-list (util/get-demand-list t2)
@@ -89,6 +90,29 @@
               :pdlist new-percent-surplus
               :iteration iteration)))
 
+; TODO feed "experiment" argument into :ccs and :wcs
+(defn setup [t _ experiment]
+  (let [intermediate-inputs (vec (range 1 (inc (t :intermediate-inputs))))
+        nature-types (vec (range 1 (inc (t :resources))))
+        labor-types (vec (range 1 (inc (t :labors))))
+        private-goods (vec (range 1 (inc (t :private-goods))))
+        public-good-types (vec (range 1 (inc (t :public-goods))))
+        pollutant-types (vec (range 1 (inc (t :pollutants))))]
+    (-> t
+        util/initialize-prices
+        (assoc :delta-delay 5
+               :natural-resources-supply (repeat (t :resources) 1000)
+               :labor-supply (repeat (t :labors) 1000)
+               :private-goods private-goods
+               :intermediate-inputs intermediate-inputs
+               :nature-types nature-types
+               :labor-types labor-types
+               :public-good-types public-good-types
+               :pollutant-types pollutant-types
+               :surplus-threshold 0.05
+               :ccs (util/add-ids ppex001/ccs)
+               :wcs (util/add-ids ppex001/wcs)))))
+
 (defn truncate-number [n]
   (gstring/format "%.3f" n))
 
@@ -112,21 +136,21 @@
           :else red)))
 
 (defn all-buttons []
-  (let [experiment-to-use (atom "ex001")]
+  (let [experiment-to-use (atom "ppex001")]
     [:div
      [:table
        [:tr
          [:td [:select {:field :list
                :id :experiment
                :on-change #(reset! experiment-to-use (-> % .-target .-value))}
-          [:option {:key :ex006} "ex001"]
+          [:option {:key :ex001} "ppex001"]
           ]]
          [:td [:input {:type "button" :value "Setup"
-              :on-click #(swap! globals util/setup globals experiment-to-use)}]]
+              :on-click #(swap! globals setup globals experiment-to-use)}]]
          [:td [:input {:type "button" :value "Iterate"
            :on-click #(swap! globals iterate-plan globals)}]]
-         [:td [:input {:type "button" :value "Augmented reset"
-           :on-click #(swap! globals util/augmented-reset globals)}]]
+         #_[:td [:input {:type "button" :value "Augmented reset"
+           :on-click #(swap! globals augmented-reset globals)}]]
          ]
         [:tr
          [:td (str "WCs: " (count (get @globals :wcs)))]
@@ -234,9 +258,6 @@
   (fn []
     (let [page (:current-page (session/get :route))]
       [:div
-       [:header
-        [:p [:a {:href (path-for :index)} "Home"] " | "
-         [:a {:href (path-for :about)} "About pequod-plus"]]]
        [page]
        [:footer
         [:p "pequod-plus was generated by the "
