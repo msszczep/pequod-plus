@@ -25,6 +25,6 @@
                      :public-good-exponents (vec (second %))
                      :pollutant-permissions (vec (repeat 1 0))
                      :pollutant-exponents (vec (last %)))
-          (partition 2 (interleave private-good-exponents
+          (partition 3 (interleave private-good-exponents
                                    public-good-exponents
                                    pollutant-exponents)))))
