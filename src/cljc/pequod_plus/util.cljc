@@ -1,5 +1,8 @@
 (ns pequod-plus.util)
 
+(defn third [s]
+  (first (next (next s))))
+
 (defn initialize-prices [t]
   (let [num-private-goods (t :private-goods)
         num-im-inputs (t :intermediate-inputs)
@@ -308,13 +311,7 @@
          J 0]
     (if (empty? inputs)
       {:prices prices :surpluses surpluses :new-deltas new-deltas}
-      (let [
-             _ 
-            (println "DEBUG: " (->> wcs
-                     (filter #(contains? (set (first (:production-inputs %)))
-                                         (first inputs)
-                                         ))))
-            supply (condp = type
+      (let [supply (condp = type
                      "private-goods" (->> wcs
                                   (filter #(and (= 0 (% :industry))
                                                 (= (first inputs)
@@ -358,10 +355,10 @@
                                    (map (partial get-input-quantity second inputs))
                                    (reduce +))
                      "labor" (->> wcs
-                                  (filter #(contains? (set (last (:production-inputs %)))
+                                  (filter #(contains? (set (third (:production-inputs %)))
                                                       (first inputs)))
                                   (map (juxt :production-inputs :labor-quantities))
-                                  (map (partial get-input-quantity last inputs))
+                                  (map (partial get-input-quantity third inputs))
                                   (reduce +))
                      "public-goods" (/ (->> ccs
                                            (mapv :public-good-demands)
@@ -369,8 +366,11 @@
                                            (reduce +))
                                        (count ccs))
                      "pollutants" (->> wcs
-                                       (mapv :pollutant-quantities)
-                                       (reduce +)))
+                                  (filter #(contains? (set (last (:production-inputs %)))
+                                                      (first inputs)))
+                                  (map (juxt :production-inputs :pollutant-quantities))
+                                  (map (partial get-input-quantity last inputs))
+                                  (reduce +)))
             j-offset (condp = type
                        "private-goods" 0
                        "intermediate" offset-1
@@ -410,8 +410,6 @@
           effort-elasticity (wc :effort-elasticity)
           disutility-of-effort-exponent (wc :disutility-of-effort-exponent)
           ps (into [] (flatten (map get-input-prices prices-and-indexes))) ; rename?
-          _ (println "prices and indexes: " prices-and-indexes)
-          _ (println "ps: " ps)
           b-input (wc :intermediate-input-exponents)
           b-labor (wc :labor-exponents)
           b-nature (wc :nature-exponents)
