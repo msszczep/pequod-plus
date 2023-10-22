@@ -1,6 +1,9 @@
 clean:
 	lein clean; rm -rf figwheel_server.log
 
+core:
+	emacs src/cljs/pequod_plus/core.cljs &
+
 serve:
 	lein figwheel
 

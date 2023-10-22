@@ -523,9 +523,8 @@
          pollutant-permissions (->> t
                                     :ccs
                                     (map :pollutant-permissions)
-                                    flatten
-                                    (reduce +)
-                                    )]
+                                    (apply map vector)
+                                    (map (partial apply +)))]
      (vector private-producers input-producers natural-resources-supply labor-supply public-good-supply pollutant-permissions))))
 
 (defn report-threshold [surplus-list supply-list demand-list]
