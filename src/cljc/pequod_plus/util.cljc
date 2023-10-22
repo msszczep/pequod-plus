@@ -334,6 +334,7 @@
                                          (reduce +)) 
                      "pollutants" (/ (->> ccs
                                          (map :pollutant-permissions)
+                                         flatten
                                          (reduce +))
                                      (count ccs)))
             demand (condp = type
@@ -522,7 +523,9 @@
          pollutant-permissions (->> t
                                     :ccs
                                     (map :pollutant-permissions)
-                                    (reduce +))]
+                                    flatten
+                                    (reduce +)
+                                    )]
      (vector private-producers input-producers natural-resources-supply labor-supply public-good-supply pollutant-permissions))))
 
 (defn report-threshold [surplus-list supply-list demand-list]
