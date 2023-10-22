@@ -49,7 +49,7 @@
                  :intermediate-input-exponents intermediate-input-exponents
                  :nature-exponents nature-exponents
                  :labor-exponents labor-exponents
-                 :pollutant-expontents pollutant-exponents
+                 :pollutant-exponents pollutant-exponents
                  :disutility-of-effort-exponent (rand-range 3 4) ; previously du
                  :disutility-of-effort-coefficient 1 ; previously s
                  :total-factor-productivity (rand-range 4 6) ; previously a

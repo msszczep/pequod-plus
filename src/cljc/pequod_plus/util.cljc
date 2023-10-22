@@ -281,7 +281,7 @@
       :x7 x7
       :x8 x8
       :effort effort
-      :intermediate-input-quantities intermediate-input-qs
+      :input-quantities intermediate-input-qs
       :nature-quantities nature-qs
       :labor-quantities labor-qs
       :pollutant-quantities pollutant-qs}))
@@ -290,11 +290,10 @@
 ; TODO : Add automated tests to all functions in this file.
 
 (defn get-input-quantity [f ii [production-inputs input-quantities]]
-  (let [_ (println "GIQ/IQ: " input-quantities)]
-   (->> ii
-        first
-        (.indexOf (f production-inputs))
-        (nth input-quantities))))
+  (->> ii
+       first
+       (.indexOf (f production-inputs))
+       (nth input-quantities)))
 
 (defn get-deltas [J price-delta pdlist]
   (max 0.001 (min price-delta (Math/abs (* price-delta (nth pdlist J))))))
@@ -309,7 +308,13 @@
          J 0]
     (if (empty? inputs)
       {:prices prices :surpluses surpluses :new-deltas new-deltas}
-      (let [supply (condp = type
+      (let [
+             _ 
+            (println "DEBUG: " (->> wcs
+                     (filter #(contains? (set (first (:production-inputs %)))
+                                         (first inputs)
+                                         ))))
+            supply (condp = type
                      "private-goods" (->> wcs
                                   (filter #(and (= 0 (% :industry))
                                                 (= (first inputs)
@@ -405,11 +410,13 @@
           effort-elasticity (wc :effort-elasticity)
           disutility-of-effort-exponent (wc :disutility-of-effort-exponent)
           ps (into [] (flatten (map get-input-prices prices-and-indexes))) ; rename?
-          b-input (wc :input-exponents)
+          _ (println "prices and indexes: " prices-and-indexes)
+          _ (println "ps: " ps)
+          b-input (wc :intermediate-input-exponents)
           b-labor (wc :labor-exponents)
           b-nature (wc :nature-exponents)
           b-pollutant (wc :pollutant-exponents)
-          b (concat b-input b-nature b-labor)
+          b (concat b-input b-nature b-labor b-pollutant)
           λ (get-lambda-o wc private-good-prices input-prices public-good-prices)
           p-i (wc :production-inputs)]
       (condp = input-count-r
