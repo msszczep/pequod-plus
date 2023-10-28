@@ -53,11 +53,7 @@
 (defn augmented-reset [t]
   (assoc t :iteration 0
            :ccs (mapv augment-cc (:ccs t))
-           :wcs (mapv augment-wc (:wcs t))
-           :last-years-supply (:supply-list t)
-           :last-years-private-good-prices (:private-good-prices t)
-           :last-years-public-good-prices (:public-good-prices t))
-           :last-years-pollutant-prices (:public-good t))
+           :wcs (mapv augment-wc (:wcs t))))
 
 ; NB: Watch for pollutant-prices and scaling effects -- i.e., does a price affect all CCs or just one CC?
 ; income (reduce + (map ((partial *) pollutant-prices pollutant-permissions (cc :income))))
@@ -309,23 +305,23 @@
       {:prices prices :surpluses surpluses :new-deltas new-deltas}
       (let [supply (condp = type
                      "private-goods" (->> wcs
-                                  (filter #(and (= 0 (% :industry))
+                                  (filter #(and (= 0 (get % :industry))
                                                 (= (first inputs)
-                                                   (% :product))))
+                                                   (get % :product))))
                                   (map :output)
                                   (reduce +))
                      "intermediate" (->> wcs
-                                         (filter #(and (= 1 (% :industry))
+                                         (filter #(and (= 1 (get % :industry))
                                                        (= (first inputs)
-                                                          (% :product))))
+                                                          (get % :product))))
                                          (map :output)
                                          (reduce +))
                      "nature" (nth natural-resources-supply J)
                      "labor"  (nth labor-supply J)
                      "public-goods" (->> wcs
-                                         (filter #(and (= 2 (% :industry))
+                                         (filter #(and (= 2 (get % :industry))
                                                        (= (first inputs)
-                                                          (% :product))))
+                                                          (get % :product))))
                                          (map :output)
                                          (reduce +)) 
                      "pollutants" (/ (->> ccs
@@ -399,21 +395,21 @@
                     (= 1 industry) (nth input-prices (dec product))
                     (= 2 industry) (nth public-good-prices (dec product)))))]
     (let [prices-and-indexes (->> (vector input-prices nature-prices labor-prices pollutant-prices)
-                                  (interleave (wc :production-inputs))
+                                  (interleave (get wc :production-inputs))
                                   (partition 2))
           input-count-r (count-inputs wc)
-          total-factor-productivity (wc :total-factor-productivity)
-          disutility-of-effort-coefficient (wc :disutility-of-effort-coefficient)
-          effort-elasticity (wc :effort-elasticity)
-          disutility-of-effort-exponent (wc :disutility-of-effort-exponent)
+          total-factor-productivity (get wc :total-factor-productivity)
+          disutility-of-effort-coefficient (get wc :disutility-of-effort-coefficient)
+          effort-elasticity (get wc :effort-elasticity)
+          disutility-of-effort-exponent (get wc :disutility-of-effort-exponent)
           ps (into [] (flatten (map get-input-prices prices-and-indexes))) ; rename?
-          b-input (wc :intermediate-input-exponents)
-          b-labor (wc :labor-exponents)
-          b-nature (wc :nature-exponents)
-          b-pollutant (wc :pollutant-exponents)
+          b-input (get wc :intermediate-input-exponents)
+          b-labor (get wc :labor-exponents)
+          b-nature (get wc :nature-exponents)
+          b-pollutant (get wc :pollutant-exponents)
           b (concat b-input b-nature b-labor b-pollutant)
           λ (get-lambda-o wc private-good-prices input-prices public-good-prices)
-          p-i (wc :production-inputs)]
+          p-i (get wc :production-inputs)]
       (condp = input-count-r
         1 (merge wc (solution-1 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
         2 (merge wc (solution-2 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
@@ -504,8 +500,8 @@
   (letfn [(get-producers [t industry product]
             (->> t
                  :wcs
-                 (filter #(and (= industry (% :industry))
-                               (= product (% :product))))
+                 (filter #(and (= industry (get % :industry))
+                               (= product (get % :product))))
                  (map :output)
                  flatten
                  (reduce +)))]

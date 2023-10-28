@@ -68,8 +68,7 @@
         new-price-deltas (util/update-price-deltas supply-list demand-list surplus-list) ; TODO : Replace by aggregating above deltas?
         new-percent-surplus (util/update-percent-surplus supply-list demand-list surplus-list)
         threshold-report (util/report-threshold surplus-list supply-list demand-list)
-        iteration (inc (:iteration t2))
-        ]
+        iteration (inc (:iteration t2))]
     (assoc t2 :private-good-prices private-good-prices
               :private-good-surpluses private-good-surpluses
               :intermediate-good-prices intermediate-good-prices
@@ -149,8 +148,8 @@
               :on-click #(swap! globals setup globals experiment-to-use)}]]
          [:td [:input {:type "button" :value "Iterate"
            :on-click #(swap! globals iterate-plan globals)}]]
-         #_[:td [:input {:type "button" :value "Augmented reset"
-           :on-click #(swap! globals augmented-reset globals)}]]
+         [:td [:input {:type "button" :value "Augmented reset"
+           :on-click #(swap! globals util/augmented-reset globals)}]]
          ]
         [:tr
          [:td (str "WCs: " (count (get @globals :wcs)))]
