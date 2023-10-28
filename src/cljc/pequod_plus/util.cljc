@@ -79,12 +79,8 @@
                                              num-of-ccs))))
                                   public-goods)
         pollutant-permissions (mapv (fn [pollutant]
-                                      (/ (* income (nth pollutant-exponents (dec pollutant)))
-                                         (* (apply + (concat private-good-exponents public-good-exponents pollutant-exponents))
-                                            (/ (nth pollutant-prices (dec pollutant))
-                                               num-of-ccs))))
-                                  pollutants)
-]
+                                      (nth pollutant-exponents (dec pollutant)))
+                                  pollutants)]
     (assoc cc :private-good-demands private-good-demands
               :public-good-demands public-good-demands
               :pollutant-permissions pollutant-permissions)))
@@ -367,11 +363,11 @@
                                            (reduce +))
                                        (count ccs))
                      "pollutants" (->> wcs
-                                  (filter #(contains? (set (last (:production-inputs %)))
-                                                      (first inputs)))
-                                  (map (juxt :production-inputs :pollutant-quantities))
-                                  (map (partial get-input-quantity last inputs))
-                                  (reduce +)))
+                                       (filter #(contains? (set (last (:production-inputs %)))
+                                                           (first inputs)))
+                                       (map (juxt :production-inputs :pollutant-quantities))
+                                       (map (partial get-input-quantity last inputs))
+                                       (reduce +)))
             j-offset (condp = type
                        "private-goods" 0
                        "intermediate" offset-1
