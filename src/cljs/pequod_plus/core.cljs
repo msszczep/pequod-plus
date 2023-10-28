@@ -181,7 +181,7 @@
              ]
              ; TODO : restore new deltas?
              [:tr {:style {:border "1px solid #ddd"}}
-              [:td {:style (assoc td-cell-style :font-weight "bold")} "PD List"]
+              [:td {:style (assoc td-cell-style :font-weight "bold")} "Price Deltas"]
               [:td {:style td-cell-style} (str (or (take 1 (divvy-up (get @globals :pdlist))) "[]"))]
               [:td {:style td-cell-style} (str (or (drop 1 (take 2 (divvy-up (get @globals :pdlist)))) "[]"))]
               [:td {:style td-cell-style} (str (or (drop 2 (take 3 (divvy-up (get @globals :pdlist)))) "[]"))]

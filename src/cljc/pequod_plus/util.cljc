@@ -40,20 +40,20 @@
         (map (fn [[a b]] (+ a b))))))
 
 (defn augment-wc [wc]
-  (assoc wc :intermediate-good-exponents (augment-exponents :wc (:intermediate-good-exponents wc))
-            :nature-exponents (augment-exponents :wc (:nature-exponents wc))
-            :labor-exponents (augment-exponents :wc (:labor-exponents wc)))
-            :pollutant-exponents (augment-exponents :wc (:pollutant-exponents wc)))
+  (assoc wc :intermediate-input-exponents (augment-exponents :wc (get wc :intermediate-input-exponents))
+            :nature-exponents (augment-exponents :wc (get wc :nature-exponents))
+            :labor-exponents (augment-exponents :wc (get wc :labor-exponents))
+            :pollutant-exponents (augment-exponents :wc (get wc :pollutant-exponents))))
 
 (defn augment-cc [cc]
-  (assoc cc :private-good-exponents (augment-exponents :cc (:private-good-exponents cc))
-            :public-good-exponents (augment-exponents :cc (:public-good-exponents cc))
-            :pollutant-exponents (augment-exponents :cc (:pollutant-exponents cc))))
+  (assoc cc :private-good-exponents (augment-exponents :cc (get cc :private-good-exponents))
+            :public-good-exponents (augment-exponents :cc (get cc :public-good-exponents))
+            :pollutant-exponents (augment-exponents :cc (get cc :pollutant-exponents))))
 
 (defn augmented-reset [t]
   (assoc t :iteration 0
-           :ccs (mapv augment-cc (:ccs t))
-           :wcs (mapv augment-wc (:wcs t))))
+           :ccs (mapv augment-cc (get t :ccs))
+           :wcs (mapv augment-wc (get t :wcs))))
 
 ; NB: Watch for pollutant-prices and scaling effects -- i.e., does a price affect all CCs or just one CC?
 ; income (reduce + (map ((partial *) pollutant-prices pollutant-permissions (cc :income))))
