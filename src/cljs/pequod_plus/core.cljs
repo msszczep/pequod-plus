@@ -29,8 +29,8 @@
          :intermediate-inputs       10
          :resources                 10
          :labors                    10
-         :public-goods              10
-         :pollutants                10
+         :public-goods              1
+         :pollutants                1
 
          :private-good-prices      []
          :intermediate-good-prices []

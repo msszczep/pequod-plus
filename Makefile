@@ -4,6 +4,9 @@ clean:
 core:
 	emacs src/cljs/pequod_plus/core.cljs &
 
+util:
+	emacs src/cljc/pequod_plus/util.cljc &
+
 serve:
 	lein figwheel
 

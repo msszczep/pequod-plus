@@ -47,8 +47,7 @@
 
 (defn augment-cc [cc]
   (assoc cc :private-good-exponents (augment-exponents :cc (get cc :private-good-exponents))
-            :public-good-exponents (augment-exponents :cc (get cc :public-good-exponents))
-            :pollutant-exponents (augment-exponents :cc (get cc :pollutant-exponents))))
+            :public-good-exponents (augment-exponents :cc (get cc :public-good-exponents))))
 
 (defn augmented-reset [t]
   (assoc t :iteration 0
@@ -56,33 +55,35 @@
            :wcs (mapv augment-wc (get t :wcs))))
 
 ; NB: Watch for pollutant-prices and scaling effects -- i.e., does a price affect all CCs or just one CC?
-; income (reduce + (map ((partial *) pollutant-prices pollutant-permissions (cc :income))))
 (defn consume [private-goods private-good-prices public-goods public-good-prices pollutants pollutant-prices num-of-ccs cc]
   (let [private-good-exponents (cc :private-good-exponents)
         public-good-exponents (cc :public-good-exponents)
-        pollutant-exponents (cc :pollutant-exponents)
-        income (cc :income)
+        pollutant-positive-utility-from-income (cc :pollutant-positive-utility-from-income) 
+        pollutant-negative-utility-from-exposure (cc :pollutant-negative-utility-from-exposure) 
         private-good-demands (mapv 
                                (fn [private-good]
                                  (/ (* income (nth private-good-exponents (dec private-good)))
-                                    (* (apply + (concat private-good-exponents public-good-exponents pollutant-exponents))
+                                    (* (apply + (concat private-good-exponents public-good-exponents))
                                        (nth private-good-prices (dec private-good)))))
                                private-goods)
         public-good-demands (mapv (fn [public-good]
                                     (/ (* income (nth public-good-exponents (dec public-good)))
-                                       (* (apply + (concat private-good-exponents public-good-exponents pollutant-exponents))
+                                       (* (apply + (concat private-good-exponents public-good-exponents))
                                           (/ (nth public-good-prices (dec public-good))
                                              num-of-ccs))))
                                   public-goods)
         pollutant-permissions (mapv (fn [pollutant]
-                                      (nth pollutant-exponents (dec pollutant)))
-                                  pollutants)]
+                                      (let [p (nth pollutant-prices pollutant)
+                                            k pollutant-negative-utility-from-exposure 
+                                            j pollutant-positive-utility-from-income]
+                                       (* (Math/pow 5 (/ 1 (- k j)))
+                                          (Math/pow (/ (* j (Math/pow p j)) k) (/ 1 (- k j))))))
+                                  pollutants)
+        income (apply + (cc :income) pollutant-permissions)]
     (assoc cc :private-good-demands private-good-demands
               :public-good-demands public-good-demands
-              :pollutant-permissions pollutant-permissions)))
-; TODO: Multiply prices and permissions in new income calculation
-; TODO: Just keep the income as is?
-; TODO: U’(z) = kzk-1 = 5jpzcc [pzccz]j-1 = U’(z) as formula for income
+              :pollutant-permissions pollutant-permissions
+              :income income)))
 
 (defn mean [L]
   (/ (reduce + L) (count L)))
