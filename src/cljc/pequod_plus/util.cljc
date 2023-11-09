@@ -59,7 +59,7 @@
   (let [private-good-exponents (cc :private-good-exponents)
         public-good-exponents (cc :public-good-exponents)
         pollutant-positive-utility-from-income (cc :pollutant-positive-utility-from-income) 
-        pollutant-negative-utility-from-exposure (cc :pollutant-negative-utility-from-exposure) 
+        pollutant-negative-utility-from-exposure (cc :pollutant-negative-utility-from-exposure)
         private-good-demands (mapv 
                                (fn [private-good]
                                  (/ (* income (nth private-good-exponents (dec private-good)))
@@ -73,7 +73,7 @@
                                              num-of-ccs))))
                                   public-goods)
         pollutant-permissions (mapv (fn [pollutant]
-                                      (let [p (nth pollutant-prices pollutant)
+                                      (let [p (nth pollutant-prices (dec pollutant))
                                             k pollutant-negative-utility-from-exposure 
                                             j pollutant-positive-utility-from-income]
                                        (* (Math/pow 5 (/ 1 (- k j)))
@@ -394,7 +394,7 @@
                   product (:product w)]
               (cond (= 0 industry) (nth private-good-prices (dec product))
                     (= 1 industry) (nth input-prices (dec product))
-                    (= 2 industry) (nth public-good-prices (dec product)))))]
+                    (= 2 industry) (first public-good-prices))))]
     (let [prices-and-indexes (->> (vector input-prices nature-prices labor-prices pollutant-prices)
                                   (interleave (get wc :production-inputs))
                                   (partition 2))

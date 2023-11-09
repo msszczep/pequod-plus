@@ -68,7 +68,7 @@
                         input-cats ; intermediate-inputs
                         input-cats ; nature-types
                         input-cats ; labor-types
-                        input-cats ; pollutants
+                        (range 1 2) ; pollutants
                         )))))
 
 ; (pequod-plus.wcs/create-wcs-bulk 100 100 100)
