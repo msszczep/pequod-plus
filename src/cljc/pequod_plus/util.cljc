@@ -60,7 +60,15 @@
         public-good-exponents (cc :public-good-exponents)
         pollutant-positive-utility-from-income (cc :pollutant-positive-utility-from-income) 
         pollutant-negative-utility-from-exposure (cc :pollutant-negative-utility-from-exposure)
-        private-good-demands (mapv 
+        pollutant-permissions (mapv (fn [pollutant]
+                                      (let [p (nth pollutant-prices (dec pollutant))
+                                            k pollutant-negative-utility-from-exposure
+                                            j pollutant-positive-utility-from-income]
+                                       (* (Math/pow 5 (/ 1 (- k j)))
+                                          (Math/pow (/ (* j (Math/pow p j)) k) (/ 1 (- k j))))))
+                                  pollutants)
+        income (apply + (cc :income) pollutant-permissions)
+        private-good-demands (mapv
                                (fn [private-good]
                                  (/ (* income (nth private-good-exponents (dec private-good)))
                                     (* (apply + (concat private-good-exponents public-good-exponents))
@@ -71,15 +79,7 @@
                                        (* (apply + (concat private-good-exponents public-good-exponents))
                                           (/ (nth public-good-prices (dec public-good))
                                              num-of-ccs))))
-                                  public-goods)
-        pollutant-permissions (mapv (fn [pollutant]
-                                      (let [p (nth pollutant-prices (dec pollutant))
-                                            k pollutant-negative-utility-from-exposure 
-                                            j pollutant-positive-utility-from-income]
-                                       (* (Math/pow 5 (/ 1 (- k j)))
-                                          (Math/pow (/ (* j (Math/pow p j)) k) (/ 1 (- k j))))))
-                                  pollutants)
-        income (apply + (cc :income) pollutant-permissions)]
+                                  public-goods)]
     (assoc cc :private-good-demands private-good-demands
               :public-good-demands public-good-demands
               :pollutant-permissions pollutant-permissions
