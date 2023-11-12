@@ -63,14 +63,10 @@
         {labor-prices :prices, labor-surpluses :surpluses, labor-new-deltas :new-deltas} (util/update-surpluses-prices "labor" (t2 :labor-types) (t2 :labor-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
         {public-good-prices :prices, public-good-surpluses :surpluses, public-good-new-deltas :new-deltas} (util/update-surpluses-prices "public-goods" (t2 :public-good-types) (t2 :public-good-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
         {pollutant-prices :prices, pollutant-surpluses :surpluses, pollutant-new-deltas :new-deltas} (util/update-surpluses-prices "pollutants" (t2 :pollutant-types) (t2 :pollutant-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
-        _ (println "PGS: " private-good-surpluses)
-        _ (println "PGP: " private-good-prices)
-        _ (println "PGND: " private-good-new-deltas)
         surplus-list (vector private-good-surpluses intermediate-good-surpluses nature-surpluses labor-surpluses public-good-surpluses pollutant-surpluses)
         supply-list (util/get-supply-list t2)
         demand-list (util/get-demand-list t2)
         new-price-deltas (util/update-price-deltas supply-list demand-list surplus-list) ; TODO : Replace by aggregating above deltas?
-        _ (println "NPD:" new-price-deltas)
         new-percent-surplus (util/update-percent-surplus supply-list demand-list surplus-list)
         threshold-report (util/report-threshold surplus-list supply-list demand-list)
         iteration (inc (:iteration t2))]
@@ -206,7 +202,7 @@
               [:td {:style td-cell-style} (str (or (drop 2 (take 3 (divvy-up (get @globals :supply-list)))) "[]"))]
               [:td {:style td-cell-style} (str (or (drop 3 (take 4 (divvy-up (get @globals :supply-list)))) "[]"))]
               [:td {:style td-cell-style} (str (or (vector (take 1 (drop 40 (get @globals :supply-list)))) "[]"))]
-              [:td {:style td-cell-style} (str (or (vector (drop 41 (divvy-up (get @globals :supply-list)))) "[]"))]
+              [:td {:style td-cell-style} (str (or (vector (drop 41 (get @globals :supply-list))) "[]"))]
              ]
              [:tr {:style {:border "1px solid #ddd"}}
               [:td {:style (assoc td-cell-style :font-weight "bold")} "Demand"]
