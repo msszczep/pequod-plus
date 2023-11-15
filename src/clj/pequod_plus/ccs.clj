@@ -15,8 +15,8 @@
                      :public-good-demands (vec (repeat 5 0))
                      :private-good-demands (vec (repeat 1 0))
                      :public-good-exponents (vec (second %))
-                     :pollutant-positive-utility-from-income (rand-nth [0.1 0.3 0.5 0.7 0.9])
-                     :pollutant-negative-utility-from-exposure (rand-nth [1.1 1.3 1.5 1.7 1.9])
+                     :pollutant-positive-utility-from-income (rand-nth [0.11 0.13 0.15 0.17 0.19])
+                     :pollutant-negative-utility-from-exposure (rand-nth [1.11 1.13 1.15 1.17 1.19])
                      :pollutant-permissions (vec (repeat 1 0)))
           (partition 2 (interleave private-good-exponents
                                    public-good-exponents)))))

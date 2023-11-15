@@ -206,7 +206,7 @@
              ]
              ; TODO : restore new deltas?
              [:tr {:style {:border "1px solid #ddd"}}
-              [:td {:style (assoc td-cell-style :font-weight "bold")} "Percentage Surplus"]
+              [:td {:style (assoc td-cell-style :font-weight "bold")} "Price Deltas"]
               [:td {:style td-cell-style} (str (or (nth pdlist-to-use 0) "[]"))]
               [:td {:style td-cell-style} (str (or (nth pdlist-to-use 1) "[]"))]
               [:td {:style td-cell-style} (str (or (nth pdlist-to-use 2) "[]"))]

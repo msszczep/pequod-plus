@@ -17,7 +17,7 @@
       :labor-prices (vec (repeat num-labor (t :init-labor-price)))
       :public-good-prices (vec (repeat num-public-goods (t :init-public-good-price)))
       :pollutant-prices (vec (repeat num-pollutants (t :init-pollutant-price)))
-      :price-deltas (vec (repeat num-private-goods 0.05))
+      :price-deltas (vec (repeat (+ num-private-goods num-im-inputs num-resources num-labor num-public-goods num-pollutants) 0.05))
       :pdlist (vec (repeat (+ num-private-goods num-im-inputs num-resources num-labor num-public-goods num-pollutants) 0.25)))))
 
 (defn add-ids [cs]
