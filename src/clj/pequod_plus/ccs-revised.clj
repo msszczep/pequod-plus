@@ -12,9 +12,9 @@
 
 (defn gen-cc [num-private-goods num-public-goods num-pollutants i]
   (let [max-exponent-threshold 0.005
-        private-goods (add-ids (generate-goods max-exponent-threshold num-private-goods))
-        public-goods (add-ids (generate-goods max-exponent-threshold num-public-goods))
-        pollutants (add-ids (generate-goods max-exponent-threshold num-pollutants))
+        private-goods (util/add-ids (generate-goods max-exponent-threshold num-private-goods))
+        public-goods (util/add-ids (generate-goods max-exponent-threshold num-public-goods))
+        pollutants (util/add-ids (generate-goods max-exponent-threshold num-pollutants))
         pollutant-utilities {:positive-utility-from-income (rand-nth [0.11 0.13 0.15 0.17 0.19])
                              :negative-utility-from-exposure (rand-nth [1.11 1.13 1.15 1.17 1.19])}]
      (hash-map :id i
