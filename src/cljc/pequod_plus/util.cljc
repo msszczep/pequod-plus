@@ -3,6 +3,14 @@
 (defn third [s]
   (first (next (next s))))
 
+(defn add-ids [cs]
+  (loop [i 1
+         cs cs
+         updated-cs []]
+    (if (empty? cs)
+      updated-cs
+      (recur (inc i) (rest cs) (conj updated-cs (assoc (first cs) :id i))))))
+
 (defn initialize-prices [t]
   (let [num-private-goods (t :private-goods)
         num-im-inputs (t :intermediate-inputs)
@@ -11,22 +19,14 @@
         num-public-goods (t :public-goods)
         num-pollutants (t :pollutants)]
     (assoc t
-      :private-good-prices (vec (repeat num-private-goods (t :init-private-good-price)))
-      :intermediate-good-prices (vec (repeat num-im-inputs (t :init-intermediate-price)))
-      :nature-prices (vec (repeat num-resources (t :init-nature-price)))
-      :labor-prices (vec (repeat num-labor (t :init-labor-price)))
-      :public-good-prices (vec (repeat num-public-goods (t :init-public-good-price)))
-      :pollutant-prices (vec (repeat num-pollutants (t :init-pollutant-price)))
-      :price-deltas (vec (repeat (+ num-private-goods num-im-inputs num-resources num-labor num-public-goods num-pollutants) 0.05))
-      :pdlist (vec (repeat (+ num-private-goods num-im-inputs num-resources num-labor num-public-goods num-pollutants) 0.25)))))
-
-(defn add-ids [cs]
-  (loop [i 1
-         cs cs
-         updated-cs []]
-    (if (empty? cs)
-      updated-cs
-      (recur (inc i) (rest cs) (conj updated-cs (assoc (first cs) :id i))))))
+           :private-good-prices (vec (repeat num-private-goods (t :init-private-good-price)))
+           :intermediate-good-prices (vec (repeat num-im-inputs (t :init-intermediate-price)))
+           :nature-prices (vec (repeat num-resources (t :init-nature-price)))
+           :labor-prices (vec (repeat num-labor (t :init-labor-price)))
+           :public-good-prices (vec (repeat num-public-goods (t :init-public-good-price)))
+           :pollutant-prices (vec (repeat num-pollutants (t :init-pollutant-price)))
+           :price-deltas (vec (repeat (+ num-private-goods num-im-inputs num-resources num-labor num-public-goods num-pollutants) 0.05))
+           :pdlist (vec (repeat (+ num-private-goods num-im-inputs num-resources num-labor num-public-goods num-pollutants) 0.25)))))
 
 (defn augment-exponents [council-type exponents]
   (let [augments-to-use (if (= :wc council-type)
