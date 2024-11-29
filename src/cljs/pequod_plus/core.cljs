@@ -9,7 +9,8 @@
    [goog.string :as gstring]
    [pequod-plus.util :as util]
    [pequod-plus.ppex001 :as ppex001]
-   [pequod-plus.ppex002 :as ppex002]))
+   [pequod-plus.ppex002 :as ppex002]
+   [pequod-plus.ppex003 :as ppex003]))
 
 ;; -----
 ;; Pequod Proper
@@ -111,11 +112,13 @@
                :ccs (util/add-ids
                      (case @experiment
                        "ppex001" ppex001/ccs
-                       "ppex002" ppex002/ccs))
+                       "ppex002" ppex002/ccs
+                       "ppex003" ppex003/ccs))
                :wcs (util/add-ids
                      (case @experiment
                        "ppex001" ppex001/wcs
-                       "ppex002" ppex002/wcs))))))
+                       "ppex002" ppex002/wcs
+                       "ppex003" ppex003/wcs))))))
 
 (defn truncate-number [n]
   (gstring/format "%.3f" n))
@@ -163,6 +166,7 @@
                :on-change #(reset! experiment-to-use (-> % .-target .-value))}
           [:option {:key :ppex001} "ppex001"]
           [:option {:key :ppex002} "ppex002"]
+          [:option {:key :ppex003} "ppex003"]
           ]]
          [:td [:input {:type "button" :value "Setup"
               :on-click #(swap! globals setup globals experiment-to-use)}]]
