@@ -54,6 +54,10 @@
                   :nature (populate-c-and-e production-inputs-nature nature-exponents)
                   :labor (populate-c-and-e production-inputs-labor labor-exponents)
                   :pollutants (populate-c-and-e production-inputs-pollutants pollutant-exponents)
+                  :disutility-of-effort {:exponent (rand-range 3 4) :coefficient 1}
+                  :total-factor-productivity (rand-range 4 6)
+                  :effort-elasticity (rand-range 0.05 0.1)
+                  :labor-quantities [0]
                   )))))
 
 (defn create-wcs-bulk [num-ind-0 num-ind-1 num-ind-2]
@@ -70,5 +74,7 @@
                         )))))
 
 ; (pequod-plus.wcs/create-wcs-bulk 100 100 100)
+
+; (pprint (create-wcs-bulk 10 10 10))
 
 ; Why doesn't work for values < 10?

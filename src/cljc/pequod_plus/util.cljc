@@ -55,6 +55,7 @@
            :wcs (mapv augment-wc (get t :wcs))))
 
 ; NB: Watch for pollutant-prices and scaling effects -- i.e., does a price affect all CCs or just one CC?
+; TODO: Revise once we have revised data structures
 (defn consume [private-goods private-good-prices public-goods public-good-prices pollutants pollutant-prices num-of-ccs cc]
   (let [private-good-exponents (cc :private-good-exponents)
         public-good-exponents (cc :public-good-exponents)
@@ -88,6 +89,7 @@
 (defn mean [L]
   (/ (reduce + L) (count L)))
 
+; TODO: Delete after restructuring?
 (defn allot-production-quantities [production-inputs xs]
   (let [[num-intermediate-input-quantities num-nature-quantities num-labor-quantities num-pollutant-quantities] (map count production-inputs)
         intermediate-input-quantities (->> xs
