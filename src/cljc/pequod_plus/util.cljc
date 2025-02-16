@@ -466,7 +466,11 @@
         (str "unexpected input-count value: " input-count-r)))))
 
 (defn proposal-revised [private-good-prices input-prices nature-prices labor-prices public-good-prices pollutant-prices wc]
-  (letfn [(get-lambda-o [w private-good-prices input-prices public-good-prices]
+  (letfn [(map-wc-values [w k]
+            (->> [:intermediate-inputs :nature :labor :pollutants]
+                 (map #(map k (get w %)))
+                 flatten))
+          (get-lambda-o [w private-good-prices input-prices public-good-prices]
             (let [industry (:industry w)
                   product (:product w)]
               (cond (= 0 industry) (nth private-good-prices (dec product))
@@ -481,12 +485,9 @@
           disutility-of-effort-coefficient (get-in wc [:disutility-of-effort :coefficient])
           disutility-of-effort-exponent (get-in wc [:disutility-of-effort :exponent])
           ps (into [] (flatten (map get-input-prices prices-and-indexes))) ; rename?
-          b (->> [:intermediate-inputs :nature :labor :pollutants]
-                 (map #(map :exponent (get wc %)))
-                 flatten)
+          b (map-wc-values wc :exponent)
           λ (get-lambda-o wc private-good-prices input-prices public-good-prices)
-          p-i (get wc :production-inputs)
-          input-count-r 5]
+          p-i (map-wc-values wc :coefficient)]
       (condp = input-count-r
         1 (merge wc (solution-1 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
         2 (merge wc (solution-2 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
