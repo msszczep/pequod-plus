@@ -28,6 +28,26 @@
            :price-deltas (vec (repeat (+ num-private-goods num-im-inputs num-resources num-labor num-public-goods num-pollutants) 0.05))
            :pdlist (vec (repeat (+ num-private-goods num-im-inputs num-resources num-labor num-public-goods num-pollutants) 0.25)))))
 
+(defn make-price-maps [price n]
+  (map #(assoc {} :id % :price price) (range 1 (inc n))))
+
+(defn initialize-prices-revised [t]
+  (let [num-private-goods (t :private-goods)
+        num-im-inputs (t :intermediate-inputs)
+        num-resources (t :resources)
+        num-labor (t :labors)
+        num-public-goods (t :public-goods)
+        num-pollutants (t :pollutants)]
+    (assoc t
+           :prices {:private-goods (make-price-maps (t :init-private-good-price) num-private-goods)
+                    :intermediate-goods (make-price-maps (t :init-intermediate-price) num-im-inputs)
+                    :nature (make-price-maps (t :init-nature-price) num-resources)
+                    :labor (make-price-maps (t :init-labor-price) num-labor)
+                    :public-goods (make-price-maps (t :init-public-good-price) num-public-goods)
+                    :pollutant-prices (make-price-maps (t :init-pollutant-price) num-pollutants)}
+           :price-deltas (vec (repeat (+ num-private-goods num-im-inputs num-resources num-labor num-public-goods num-pollutants) 0.05))
+           :pdlist (vec (repeat (+ num-private-goods num-im-inputs num-resources num-labor num-public-goods num-pollutants) 0.25)))))
+
 (defn augment-exponents [council-type exponents]
   (let [augments-to-use (if (= :wc council-type)
                             [0 0.001 0.002 0.003 0.004]
@@ -385,7 +405,29 @@
                (conj new-deltas new-delta)
                (inc J))))))
 
-(defn proposal [private-good-prices input-prices nature-prices labor-prices public-good-prices pollutant-prices wc]
+; private-good-prices:  [700 700 700 700 700 700 700 700 700 700]
+; intermediate-good-prices:  [700 700 700 700 700 700 700 700 700 700]
+; nature-prices:  [700 700 700 700 700 700 700 700 700 700]
+; labor-prices:  [700 700 700 700 700 700 700 700 700 700]
+; public-good-prices:  [700]
+; pollutant-prices:  [700]
+
+; prices-and-indexes
+#_(([7] [700 700 700 700 700 700 700 700 700 700])
+ ([5] [700 700 700 700 700 700 700 700 700 700])
+ ([8] [700 700 700 700 700 700 700 700 700 700])
+ ([6 10] [700]))
+
+; ps: get the corresponding price for each good
+; b: all the exponents
+; lambda: get the price for the given product (can that be correct?)
+; p-i production-inputs, e.g. [[7] [5] [8] [6 10]],
+
+; does that mean that pollutants haven't been working?
+; idea: put prices in a map?
+; idea: get rid of x-values in solution-N functions?
+
+(defn proposal [prices wc]
   (letfn [(count-inputs [w]
             ((comp count flatten :production-inputs) w))
           (get-input-prices [[indexes prices]]
@@ -412,6 +454,39 @@
           b (concat b-input b-nature b-labor b-pollutant)
           λ (get-lambda-o wc private-good-prices input-prices public-good-prices)
           p-i (get wc :production-inputs)]
+      (condp = input-count-r
+        1 (merge wc (solution-1 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
+        2 (merge wc (solution-2 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
+        3 (merge wc (solution-3 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
+        4 (merge wc (solution-4 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
+        5 (merge wc (solution-5 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
+        6 (merge wc (solution-6 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
+        7 (merge wc (solution-7 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
+        8 (merge wc (solution-8 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
+        (str "unexpected input-count value: " input-count-r)))))
+
+(defn proposal-revised [private-good-prices input-prices nature-prices labor-prices public-good-prices pollutant-prices wc]
+  (letfn [(get-lambda-o [w private-good-prices input-prices public-good-prices]
+            (let [industry (:industry w)
+                  product (:product w)]
+              (cond (= 0 industry) (nth private-good-prices (dec product))
+                    (= 1 industry) (nth input-prices (dec product))
+                    (= 2 industry) (first public-good-prices))))]
+    (let [input-count-r (+ (count (:intermediate-inputs wc))
+                           (count (:labor wc))
+                           (count (:nature wc))
+                           (count (:pollutants wc)))
+          total-factor-productivity (get wc :total-factor-productivity)
+          effort-elasticity (get wc :effort-elasticity)
+          disutility-of-effort-coefficient (get-in wc [:disutility-of-effort :coefficient])
+          disutility-of-effort-exponent (get-in wc [:disutility-of-effort :exponent])
+          ps (into [] (flatten (map get-input-prices prices-and-indexes))) ; rename?
+          b (->> [:intermediate-inputs :nature :labor :pollutants]
+                 (map #(map :exponent (get wc %)))
+                 flatten)
+          λ (get-lambda-o wc private-good-prices input-prices public-good-prices)
+          p-i (get wc :production-inputs)
+          input-count-r 5]
       (condp = input-count-r
         1 (merge wc (solution-1 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
         2 (merge wc (solution-2 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
