@@ -25,71 +25,44 @@
          :init-nature-price       700
          :init-public-good-price  700
          :init-pollutant-price    700
-
-         :private-goods             10
-         :intermediate-inputs       10
-         :resources                 10
-         :labors                    10
+         :private-goods            10
+         :intermediate-inputs      10
+         :resources                10
+         :labors                   10
          :public-goods              1
          :pollutants                1
-
-         :private-good-prices      []
-         :intermediate-good-prices []
-         :labor-prices             []
-         :nature-prices            []
-         :public-good-prices       []
-         :pollutant-prices         []
-
-         :private-good-surpluses   []
-         :intermediate-input-surpluses []
-         :nature-surpluses         []
-         :labor-surpluses          []
-         :public-good-surpluses    []
-         :pollutant-surpluses      []
-
+         :price-data               {}
+         :surplus-data             {}
+         :supply-data              {}
+         :demand-data              {}
          :threshold-report         []
-         :price-deltas             []
          :wcs                      []
          :ccs                      []
-         :iteration                0
-         :natural-resources-supply 0
-         :labor-supply             0}))
+         :iteration                0}))
 
 (defn iterate-plan [t]
-  (let [t2 (assoc t :ccs (map (partial util/consume (t :private-goods) (t :private-good-prices) (t :public-good-types) (t :public-good-prices) (t :pollutant-types) (t :pollutant-prices) (count (t :ccs))) (t :ccs))
-                    :wcs (map (partial util/proposal (t :private-good-prices) (t :intermediate-good-prices) (t :nature-prices) (t :labor-prices) (t :public-good-prices) (t :pollutant-prices)) (t :wcs)))
-        {private-good-prices :prices, private-good-surpluses :surpluses, private-good-new-deltas :new-deltas} (util/update-surpluses-prices "private-goods" (t2 :private-goods) (t2 :private-good-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
-        {intermediate-good-prices :prices, intermediate-good-surpluses :surpluses, intermediate-good-new-deltas :new-deltas} (util/update-surpluses-prices "intermediate" (t2 :intermediate-inputs) (t2 :intermediate-good-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
-        {nature-prices :prices, nature-surpluses :surpluses, nature-new-deltas :new-deltas} (util/update-surpluses-prices "nature" (t2 :nature-types) (t2 :nature-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
-        {labor-prices :prices, labor-surpluses :surpluses, labor-new-deltas :new-deltas} (util/update-surpluses-prices "labor" (t2 :labor-types) (t2 :labor-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
-        {public-good-prices :prices, public-good-surpluses :surpluses, public-good-new-deltas :new-deltas} (util/update-surpluses-prices "public-goods" (t2 :public-good-types) (t2 :public-good-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
-        {pollutant-prices :prices, pollutant-surpluses :surpluses, pollutant-new-deltas :new-deltas} (util/update-surpluses-prices "pollutants" (t2 :pollutant-types) (t2 :pollutant-prices) (t2 :wcs) (t2 :ccs) (t2 :natural-resources-supply) (t2 :labor-supply) (t2 :pdlist) (last (t2 :private-goods)) (last (t2 :intermediate-inputs)) (t2 :resources) (t2 :labors) (t2 :pollutants))
-        surplus-list (vector private-good-surpluses intermediate-good-surpluses nature-surpluses labor-surpluses public-good-surpluses pollutant-surpluses)
-        supply-list (util/get-supply-list t2)
-        demand-list (util/get-demand-list t2)
-        new-price-deltas (util/update-price-deltas supply-list demand-list surplus-list) ; TODO : Replace by aggregating above deltas?
-        new-percent-surplus (util/update-percent-surplus supply-list demand-list surplus-list)
-        threshold-report (util/report-threshold surplus-list supply-list demand-list)
-        iteration (inc (:iteration t2))]
-    (assoc t2 :private-good-prices private-good-prices
-              :private-good-surpluses private-good-surpluses
-              :intermediate-good-prices intermediate-good-prices
-              :intermediate-good-surpluses intermediate-good-surpluses
-              :nature-prices nature-prices
-              :nature-surpluses nature-surpluses
-              :labor-prices labor-prices
-              :labor-surpluses labor-surpluses
-              :public-good-prices public-good-prices
-              :public-good-surpluses public-good-surpluses
-              :pollutant-prices pollutant-prices
-              :pollutant-surpluses pollutant-surpluses
-              :demand-list demand-list
-              :surplus-list surplus-list
-              :supply-list supply-list
-              :threshold-report threshold-report
-              :price-deltas new-price-deltas
-              :pdlist new-percent-surplus
-              :iteration iteration)))
+  (let [wcs (mapv (partial proposal (:price-data t)) (:wcs t))
+        ccs (mapv (partial consume (t :private-goods) (t :public-good-types) (t :pollutant-types) (count (t :ccs)) (get-in t [:price-data])) (t :ccs))
+        price-data (update-surpluses-prices t)
+        surplus-data (get-pricing-data price-data :surplus)
+        supply-data (get-pricing-data price-data :supply)
+        demand-data (get-pricing-data price-data :demand)
+        price-deltas (get-pricing-data price-data :price-delta-to-use)
+        pd-list (get-pricing-data price-data :pd)
+        percent-surplus (update-percent-surplus supply-data demand-data surplus-data)
+        threshold-report (report-threshold supply-data demand-data surplus-data)
+        t2 (assoc t :wcs wcs
+                    :ccs ccs
+                    :price-data price-data
+                    :surplus-data surplus-data
+                    :supply-data supply-data
+                    :demand-data demand-data
+                    :price-delta-data price-deltas
+                    :pd-data pd-list
+                    :percent-surplus percent-surplus
+                    :threshold-report threshold-report
+                    :iteration (inc (:iteration t)))]
+    t2))
 
 ; TODO feed "experiment" argument into :ccs and :wcs
 (defn setup [t _ experiment]
@@ -100,7 +73,7 @@
         public-good-types (vec (range 1 (inc (t :public-goods))))
         pollutant-types (vec (range 1 (inc (t :pollutants))))]
     (-> t
-        util/initialize-prices
+        initialize-prices
         (assoc :natural-resources-supply (repeat (t :resources) 1000)
                :labor-supply (repeat (t :labors) 1000)
                :private-goods private-goods
@@ -109,12 +82,12 @@
                :labor-types labor-types
                :public-good-types public-good-types
                :pollutant-types pollutant-types
-               :ccs (util/add-ids
+               :ccs (add-ids
                      (case @experiment
                        "ppex001" ppex001/ccs
                        "ppex002" ppex002/ccs
                        "ppex003" ppex003/ccs))
-               :wcs (util/add-ids
+               :wcs (add-ids
                      (case @experiment
                        "ppex001" ppex001/wcs
                        "ppex002" ppex002/wcs
@@ -181,11 +154,12 @@
 
 (defn show-globals []
     (let [td-cell-style {:border "1px solid #ddd" :text-align "center" :vertical-align "middle" :padding "8px"}
-          pdlist-to-use (divvy-up (get @globals :pdlist))
-          supply-list-to-use (divvy-up (get @globals :supply-list))
+          pdlist-to-use (divvy-up (get @globals :pd-data))
+          supply-list-to-use (divvy-up (get @globals :supply-data))
           demand-list-to-use (divvy-up (get @globals :demand-list))
-          surplus-list-to-use (divvy-up (get @globals :surplus-list))
-          threshold-to-use (divvy-up (get @globals :threshold-report))]
+          surplus-list-to-use (divvy-up (get @globals :surplus-data))
+          threshold-to-use (divvy-up (get @globals :threshold-report))
+          price-data (get-in @globals [:price-data])]
      [:div [:h4 "Welcome to pequod-plus"]
            (all-buttons)
            [:p]
@@ -201,12 +175,12 @@
              ]
              [:tr {:style {:border "1px solid #ddd"}}
               [:td {:style (assoc td-cell-style :font-weight "bold")} "Prices"]
-              [:td {:style td-cell-style} (or (str (mapv truncate-number (get @globals :private-good-prices))) "")]
-              [:td {:style td-cell-style} (or (str (mapv truncate-number (get @globals :intermediate-good-prices))) "")]
-              [:td {:style td-cell-style} (or (str (mapv truncate-number (get @globals :nature-prices))) "")]
-              [:td {:style td-cell-style} (or (str (mapv truncate-number (get @globals :labor-prices))) "")]
-              [:td {:style td-cell-style} (or (str (mapv truncate-number (get @globals :public-good-prices))) "")]
-              [:td {:style td-cell-style} (or (str (mapv truncate-number (get @globals :pollutant-prices))) "")]
+              [:td {:style td-cell-style} (or (str (mapv truncate-number (:private-goods price-data))) "")]
+              [:td {:style td-cell-style} (or (str (mapv truncate-number (:intermediate-goods price-data))) "")]
+              [:td {:style td-cell-style} (or (str (mapv truncate-number (:nature price-data))) "")]
+              [:td {:style td-cell-style} (or (str (mapv truncate-number (:labor price-data))) "")]
+              [:td {:style td-cell-style} (or (str (mapv truncate-number (:public-goods price-data))) "")]
+              [:td {:style td-cell-style} (or (str (mapv truncate-number (:pollutants price-data))) "")]
              ]
              ; TODO : restore new deltas?
              [:tr {:style {:border "1px solid #ddd"}}
