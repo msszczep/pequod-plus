@@ -58,7 +58,7 @@
 
 ; TODO turn natural-resources-supply and labor-supply into list of maps?
 ; TODO get rid of inputs/types?
-(defn setup [t]
+#_(defn setup [t]
   (let [intermediate-inputs (vec (range 1 (inc (t :intermediate-inputs))))
         nature-types (vec (range 1 (inc (t :resources))))
         labor-types (vec (range 1 (inc (t :labors))))
@@ -298,10 +298,16 @@
            (mapv force-to-one)))))
 
 (defn update-percent-surplus [supply-data demand-data surplus-data]
-  (let [updates-to-use (mapv (fn [cat-to-use] (compute-percent-surplus (get-in supply-data [cat-to-use])
+  (let [categories [:private-goods :intermediate-goods :nature :labor :public-goods :pollutants]
+        updates-to-use (mapv (fn [cat-to-use] (compute-percent-surplus (get-in supply-data [cat-to-use])
                                                                        (get-in demand-data [cat-to-use])
                                                                        (get-in surplus-data [cat-to-use]))) categories)]
     (zipmap categories updates-to-use)))
+
+(defn update-surpluses-prices [t]
+  (let [categories [:private-goods :intermediate-goods :nature :labor :public-goods :pollutants]
+        price-updates (mapv (fn [type-to-use] (mapv (partial compute-surpluses-prices t type-to-use) (get-in t [:price-data type-to-use]))) categories)]
+     (zipmap categories price-updates)))
 
 (defn compute-threshold [surplus-list supply-list demand-list]
   (->> (interleave (flatten surplus-list) (flatten demand-list) (flatten supply-list))
@@ -309,7 +315,8 @@
        (mapv #(* 100 (/ (Math/abs (* 2 (first %))) (+ (second %) (last %)))))))
 
 (defn report-threshold [supply-data demand-data surplus-data]
-  (let [updates-to-use (mapv (fn [cat-to-use] (compute-threshold (get-in supply-data [cat-to-use])
+  (let [categories [:private-goods :intermediate-goods :nature :labor :public-goods :pollutants]
+        updates-to-use (mapv (fn [cat-to-use] (compute-threshold (get-in supply-data [cat-to-use])
                                                                  (get-in demand-data [cat-to-use])
                                                                  (get-in surplus-data [cat-to-use]))) categories)]
     (zipmap categories updates-to-use)))
@@ -398,7 +405,8 @@
               :income income)))
 
 (defn get-pricing-data [price-data pricing-cat]
-  (let [surpluses (mapv (fn [type-to-use] (mapv pricing-cat (get-in price-data [type-to-use]))) categories)]
+  (let [categories [:private-goods :intermediate-goods :nature :labor :public-goods :pollutants]
+        surpluses (mapv (fn [type-to-use] (mapv pricing-cat (get-in price-data [type-to-use]))) categories)]
     (zipmap categories surpluses)))
 
 (defn iterate-plan [t]

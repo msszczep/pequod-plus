@@ -1,4 +1,4 @@
-(ns pequod-plus.wcs)
+(ns pequod-plus.wcs-revised)
 
 (defn create-wcs [num-of-worker-councils goods industry]
   (->> goods
