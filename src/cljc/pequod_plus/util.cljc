@@ -81,20 +81,21 @@
                      councils/wcs)))))
 
 (defn allot-production-quantities [production-inputs xs]
-  (let [[num-intermediate-input-quantities num-nature-quantities num-labor-quantities num-pollutant-quantities] (map count production-inputs)
+  (let [[I N L P] (map count production-inputs)
         intermediate-input-quantities (->> xs
-                                           (take num-intermediate-input-quantities)
+                                           (take I)
                                            (into []))
         nature-quantities (->> xs
-                               (drop num-intermediate-input-quantities)
-                               (take num-nature-quantities)
+                               (drop I)
+                               (take N)
                                (into []))
         labor-quantities (->> xs
-                              (drop (+ num-intermediate-input-quantities num-nature-quantities))
-                              (take num-labor-quantities)
+                              (drop (+ I N))
+                              (take L)
                               (into []))
         pollutant-quantities (->> xs
-                                  (drop (+ num-intermediate-input-quantities num-nature-quantities num-labor-quantities))
+                                  (drop (+ I N L))
+                                  (take P)
                                   (into []))]
     [intermediate-input-quantities nature-quantities labor-quantities pollutant-quantities]))
 
@@ -209,14 +210,12 @@
        (filter (fn [[a _]] (= filter-factor (get a :coefficient))))
        (map last)))
 
-(defn compute-surpluses-prices [t type-to-use price-datum]
+(defn compute-surpluses-prices [wcs ccs natural-resources-supply labor-supply type-to-use price-datum]
   (let [id-to-use (:id price-datum)
-        wcs (:wcs t)
-        ccs (:ccs t)
         supply (condp = type-to-use
                            :private-goods (->> wcs
                                                (filter #(and (= 0 (get % :industry))
-                                                             (= 1
+                                                             (= id-to-use
                                                                 (get % :product))))
                                                (map :output)
                                                (reduce +))
@@ -226,8 +225,8 @@
                                                                      (get % :product))))
                                                     (mapv :output)
                                                     (reduce +))
-                           :nature (nth (t :natural-resources-supply) (dec id-to-use))
-                           :labor  (nth (t :labor-supply) (dec id-to-use))
+                           :nature (nth natural-resources-supply (dec id-to-use))
+                           :labor  (nth labor-supply (dec id-to-use))
                            :public-goods (->> wcs
                                               (filter #(and (= 2 (get % :industry))
                                                             (= id-to-use
@@ -304,9 +303,9 @@
                                                                        (get-in surplus-data [cat-to-use]))) categories)]
     (zipmap categories updates-to-use)))
 
-(defn update-surpluses-prices [t]
+(defn update-surpluses-prices [wcs ccs natural-resources-supply labor-supply price-data]
   (let [categories [:private-goods :intermediate-goods :nature :labor :public-goods :pollutants]
-        price-updates (mapv (fn [type-to-use] (mapv (partial compute-surpluses-prices t type-to-use) (get-in t [:price-data type-to-use]))) categories)]
+        price-updates (mapv (fn [type-to-use] (mapv (partial compute-surpluses-prices wcs ccs natural-resources-supply labor-supply type-to-use) (get-in price-data [type-to-use]))) categories)]
      (zipmap categories price-updates)))
 
 (defn compute-threshold [surplus-list supply-list demand-list]
@@ -409,10 +408,10 @@
         surpluses (mapv (fn [type-to-use] (mapv pricing-cat (get-in price-data [type-to-use]))) categories)]
     (zipmap categories surpluses)))
 
-(defn iterate-plan [t]
+#_(defn iterate-plan [t]
   (let [wcs (mapv (partial proposal (:price-data t)) (:wcs t))
         ccs (mapv (partial consume (t :private-goods) (t :public-good-types) (t :pollutant-types) (count (t :ccs)) (get-in t [:price-data])) (t :ccs))
-        price-data (update-surpluses-prices t)
+        price-data (update-surpluses-prices wcs ccs (:price-data t))
         surplus-data (get-pricing-data price-data :surplus)
         supply-data (get-pricing-data price-data :supply)
         demand-data (get-pricing-data price-data :demand)

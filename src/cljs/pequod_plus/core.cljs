@@ -41,7 +41,7 @@
 (defn iterate-plan [t]
   (let [wcs (mapv (partial util/proposal (:price-data t)) (:wcs t))
         ccs (mapv (partial util/consume (t :private-goods) (t :public-good-types) (t :pollutant-types) (count (t :ccs)) (get-in t [:price-data])) (t :ccs))
-        price-data (util/update-surpluses-prices t)
+        price-data (util/update-surpluses-prices wcs ccs (:natural-resources-supply t) (:labor-supply t) (:price-data t))
         surplus-data (util/get-pricing-data price-data :surplus)
         supply-data (util/get-pricing-data price-data :supply)
         demand-data (util/get-pricing-data price-data :demand)
