@@ -144,26 +144,26 @@
              [:tr {:style {:border "1px solid #ddd"}}
               [:td {:style (assoc td-cell-style :font-weight "bold")} "Prices"]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price) (:private-goods price-data))) "")]
-              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price) (:intermediate-goods price-data))) "")]
+              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price) (:intermediate-inputs price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price) (:nature price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price) (:labor price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price) (:public-goods price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price) (:pollutants price-data))) "")]
              ]
-             ; TODO : restore new deltas?
              [:tr {:style {:border "1px solid #ddd"}}
               [:td {:style (assoc td-cell-style :font-weight "bold")} "Price Deltas"]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price-delta) (:private-goods price-data))) "")]
-              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price-delta) (:intermediate-goods price-data))) "")]
+              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price-delta) (:intermediate-inputs price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price-delta) (:nature price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price-delta) (:labor price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price-delta) (:public-goods price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price-delta) (:pollutants price-data))) "")]
              ]
+
              [:tr {:style {:border "1px solid #ddd"}}
               [:td {:style (assoc td-cell-style :font-weight "bold")} "Supply"]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :supply) (:private-goods price-data))) "")]
-              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :supply) (:intermediate-goods price-data))) "")]
+              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :supply) (:intermediate-inputs price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :supply) (:nature price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :supply) (:labor price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :supply) (:public-goods price-data))) "")]
@@ -172,7 +172,7 @@
              [:tr {:style {:border "1px solid #ddd"}}
               [:td {:style (assoc td-cell-style :font-weight "bold")} "Demand"]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :demand) (:private-goods price-data))) "")]
-              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :demand) (:intermediate-goods price-data))) "")]
+              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :demand) (:intermediate-inputs price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :demand) (:nature price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :demand) (:labor price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :demand) (:public-goods price-data))) "")]
@@ -181,7 +181,7 @@
              [:tr {:style {:border "1px solid #ddd"}}
               [:td {:style (assoc td-cell-style :font-weight "bold")} "Surplus"]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :surplus) (:private-goods price-data))) "")]
-              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :surplus) (:intermediate-goods price-data))) "")]
+              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :surplus) (:intermediate-inputs price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :surplus) (:nature price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :surplus) (:labor price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :surplus) (:public-goods price-data))) "")]
@@ -191,8 +191,8 @@
               [:td {:style (assoc td-cell-style :font-weight "bold")} "Percent Surplus / Threshold Met?"]
               [:td {:style (assoc td-cell-style :background (show-color (:private-goods percent-surplus)))}
                    (str (:private-goods percent-surplus))]
-              [:td {:style (assoc td-cell-style :background (show-color (:intermediate-goods percent-surplus)))}
-                   (str (:intermediate-goods percent-surplus))]
+              [:td {:style (assoc td-cell-style :background (show-color (:intermediate-inputs percent-surplus)))}
+                   (str (:intermediate-inputs percent-surplus))]
               [:td {:style (assoc td-cell-style :background (show-color (:nature percent-surplus)))}
                    (str (:nature percent-surplus))]
               [:td {:style (assoc td-cell-style :background (show-color (:labor percent-surplus)))}

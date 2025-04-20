@@ -23,7 +23,7 @@
    :iteration                0})
 
 (def categories 
-  [:private-goods :intermediate-goods :nature :labor :public-goods :pollutants])
+  [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants])
 
 (defn mean [L]
   (/ (reduce + L) (count L)))
@@ -42,7 +42,7 @@
         pd-to-use 0.25]
     (assoc t
            :price-data {:private-goods (make-price-maps (t :init-private-good-price) num-private-goods price-delta-to-use pd-to-use)
-                        :intermediate-goods (make-price-maps (t :init-intermediate-price) num-im-inputs price-delta-to-use pd-to-use)
+                        :intermediate-inputs (make-price-maps (t :init-intermediate-price) num-im-inputs price-delta-to-use pd-to-use)
                         :nature (make-price-maps (t :init-nature-price) num-resources price-delta-to-use pd-to-use)
                         :labor (make-price-maps (t :init-labor-price) num-labor price-delta-to-use pd-to-use)
                         :public-goods (make-price-maps (t :init-public-good-price) num-public-goods price-delta-to-use pd-to-use)
@@ -219,7 +219,7 @@
                                                                 (get % :product))))
                                                (map :output)
                                                (reduce +))
-                           :intermediate-goods (->> wcs
+                           :intermediate-inputs (->> wcs
                                                     (filter #(and (= 1 (get % :industry))
                                                                   (= id-to-use
                                                                      (get % :product))))
@@ -245,7 +245,7 @@
                                                (map #(map (fn [x] (get-in x [:demand])) %))
                                                flatten
                                                (reduce +))
-                           :intermediate-goods  (->> wcs
+                           :intermediate-inputs (->> wcs
                                                      (mapv #(select-keys % [:intermediate-inputs :intermediate-input-quantities]))
                                                      (filter (fn [x] (contains? (set (mapv :coefficient (:intermediate-inputs x))) id-to-use)))
                                                      (mapv (partial get-filtered-input-quantities id-to-use))
@@ -297,14 +297,14 @@
            (mapv force-to-one)))))
 
 (defn update-percent-surplus [supply-data demand-data surplus-data]
-  (let [categories [:private-goods :intermediate-goods :nature :labor :public-goods :pollutants]
+  (let [categories [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
         updates-to-use (mapv (fn [cat-to-use] (compute-percent-surplus (get-in supply-data [cat-to-use])
                                                                        (get-in demand-data [cat-to-use])
                                                                        (get-in surplus-data [cat-to-use]))) categories)]
     (zipmap categories updates-to-use)))
 
 (defn update-surpluses-prices [wcs ccs natural-resources-supply labor-supply price-data]
-  (let [categories [:private-goods :intermediate-goods :nature :labor :public-goods :pollutants]
+  (let [categories [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
         price-updates (mapv (fn [type-to-use] (mapv (partial compute-surpluses-prices wcs ccs natural-resources-supply labor-supply type-to-use) (get-in price-data [type-to-use]))) categories)]
      (zipmap categories price-updates)))
 
@@ -314,7 +314,7 @@
        (mapv #(* 100 (/ (Math/abs (* 2 (first %))) (+ (second %) (last %)))))))
 
 (defn report-threshold [supply-data demand-data surplus-data]
-  (let [categories [:private-goods :intermediate-goods :nature :labor :public-goods :pollutants]
+  (let [categories [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
         updates-to-use (mapv (fn [cat-to-use] (compute-threshold (get-in supply-data [cat-to-use])
                                                                  (get-in demand-data [cat-to-use])
                                                                  (get-in surplus-data [cat-to-use]))) categories)]
@@ -324,6 +324,12 @@
   (letfn [(map-wc-values [w k]
             (->> [:intermediate-inputs :nature :labor :pollutants]
                  (mapv #(mapv k (get w %)))))
+          (get-product-category-price [prices category product]
+            (->> prices
+                 category
+                 (filterv #(= product (:id %)))
+                 first
+                 :price))
           (get-product-price [product prices]
             (->> prices
                  (filterv #(= product (:id %)))
@@ -336,7 +342,7 @@
                     (= 1 industry) (get-product-price product input-prices)
                     (= 2 industry) (get-product-price 1 public-good-prices))))]
     (let [private-good-prices (:private-goods prices)
-          input-prices (:intermediate-goods prices)
+          input-prices (:intermediate-inputs prices)
           public-good-prices (:public-goods prices)
           input-count-r (+ (count (:intermediate-inputs wc))
                            (count (:labor wc))
@@ -346,10 +352,13 @@
           effort-elasticity (get wc :effort-elasticity)
           disutility-of-effort-coefficient (get-in wc [:disutility-of-effort :coefficient])
           disutility-of-effort-exponent (get-in wc [:disutility-of-effort :exponent])
-          ps (map-wc-values wc :coefficient)
+          p-i (map-wc-values wc :coefficient)
+          ps [(mapv (partial get-product-category-price prices :intermediate-inputs) (first p-i))
+              (mapv (partial get-product-category-price prices :nature) (second p-i))
+              (mapv (partial get-product-category-price prices :labor) (nth p-i 2))
+              (mapv (partial get-product-category-price prices :pollutants) (last p-i))]
           b (map-wc-values wc :exponent)
-          λ (get-lambda-o wc private-good-prices input-prices public-good-prices)
-          p-i ps]
+          λ (get-lambda-o wc private-good-prices input-prices public-good-prices)]
       (condp = input-count-r
         4 (merge wc (solution-4 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
         5 (merge wc (solution-5 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
@@ -404,7 +413,7 @@
               :income income)))
 
 (defn get-pricing-data [price-data pricing-cat]
-  (let [categories [:private-goods :intermediate-goods :nature :labor :public-goods :pollutants]
+  (let [categories [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
         surpluses (mapv (fn [type-to-use] (mapv pricing-cat (get-in price-data [type-to-use]))) categories)]
     (zipmap categories surpluses)))
 
