@@ -240,8 +240,8 @@
                                                (reduce +))
                                           (count ccs)))
         demand (condp = type-to-use
-                           :private-goods  (->> ccs
-                                               (map :private-goods)
+                           :private-goods (->> ccs
+                                               (mapv :private-goods)
                                                (map #(map (fn [x] (get-in x [:demand])) %))
                                                flatten
                                                (reduce +))
@@ -389,12 +389,13 @@
                                                                             (Math/pow (/ (* j (Math/pow p j)) k) (/ 1 (- k j))))]
                                           (assoc previous-permission :demand pollutant-permission)))
                                         pollutants)
-        income (apply + (cc :income) (map :demand updated-pollutant-permissions))
+        income (apply + (cc :income) (mapv :demand updated-pollutant-permissions))
         updated-private-goods (mapv
                                 (fn [private-good]
                                   (let [private-good-price (:price (first (filter #(= private-good (:id %)) private-good-prices)))
                                         previous-private-good (first (filter #(= private-good (:id %)) private-goods-in-cc))
-                                        updated-demand     (/ (* income private-good-price)
+                                        private-good-exponent (:exponent previous-private-good)
+                                        updated-demand     (/ (* income private-good-exponent)
                                                               (* (apply + (concat private-good-exponents public-good-exponents))
                                                                  private-good-price))]
                                     (assoc previous-private-good :demand updated-demand)))
@@ -402,7 +403,8 @@
         updated-public-goods (mapv (fn [public-good]
                                      (let [public-good-price (:price (first (filter #(= public-good (:id %)) public-good-prices)))
                                            previous-public-good (first (filter #(= public-good (:id %)) public-goods-in-cc))
-                                           updated-demand       (/ (* income public-good-price)
+                                           public-good-exponent (:exponent previous-public-good)
+                                           updated-demand       (/ (* income public-good-exponent)
                                                                    (* (apply + (concat private-good-exponents public-good-exponents))
                                                                       (/ public-good-price num-of-ccs)))]
                                    (assoc previous-public-good :demand updated-demand)))
