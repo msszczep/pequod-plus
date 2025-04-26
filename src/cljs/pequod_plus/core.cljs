@@ -189,18 +189,18 @@
              ]
              [:tr {:style {:border "1px solid #ddd"}}
               [:td {:style (assoc td-cell-style :font-weight "bold")} "Percent Surplus / Threshold Met?"]
-              [:td {:style (assoc td-cell-style :background (show-color (:private-goods percent-surplus)))}
-                   (str (:private-goods percent-surplus))]
-              [:td {:style (assoc td-cell-style :background (show-color (:intermediate-inputs percent-surplus)))}
-                   (str (:intermediate-inputs percent-surplus))]
-              [:td {:style (assoc td-cell-style :background (show-color (:nature percent-surplus)))}
-                   (str (:nature percent-surplus))]
-              [:td {:style (assoc td-cell-style :background (show-color (:labor percent-surplus)))}
-                   (str (:labor percent-surplus))]
-              [:td {:style (assoc td-cell-style :background (show-color (:public-goods percent-surplus)))}
-                   (str (:public-goods percent-surplus))]
-              [:td {:style (assoc td-cell-style :background (show-color (:pollutants percent-surplus)))}
-                   (str (:pollutants percent-surplus))]]
+              [:td {:style (assoc td-cell-style :background (show-color (:private-goods threshold-to-use)))}
+                   (str (:private-goods threshold-to-use))]
+              [:td {:style (assoc td-cell-style :background (show-color (:intermediate-inputs threshold-to-use)))}
+                   (str (:intermediate-inputs threshold-to-use))]
+              [:td {:style (assoc td-cell-style :background (show-color (:nature threshold-to-use)))}
+                   (str (:nature threshold-to-use))]
+              [:td {:style (assoc td-cell-style :background (show-color (:labor threshold-to-use)))}
+                   (str (:labor threshold-to-use))]
+              [:td {:style (assoc td-cell-style :background (show-color (:public-goods threshold-to-use)))}
+                   (str (:public-goods threshold-to-use))]
+              [:td {:style (assoc td-cell-style :background (show-color (:pollutants threshold-to-use)))}
+                   (str (:pollutants threshold-to-use))]]
 ]]))
 
 ;; -------------------------

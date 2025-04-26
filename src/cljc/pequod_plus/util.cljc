@@ -308,7 +308,7 @@
         price-updates (mapv (fn [type-to-use] (mapv (partial compute-surpluses-prices wcs ccs natural-resources-supply labor-supply type-to-use) (get-in price-data [type-to-use]))) categories)]
      (zipmap categories price-updates)))
 
-(defn compute-threshold [surplus-list supply-list demand-list]
+(defn compute-threshold [supply-list demand-list surplus-list]
   (->> (interleave (flatten surplus-list) (flatten demand-list) (flatten supply-list))
        (partition 3)
        (mapv #(* 100 (/ (Math/abs (* 2 (first %))) (+ (second %) (last %)))))))
@@ -465,6 +465,8 @@
 (defn augment-cc [cc]
   (assoc cc :private-good-exponents (augment-exponents :cc (get cc :private-good-exponents))
             :public-good-exponents (augment-exponents :cc (get cc :public-good-exponents))))
+
+
 
 (defn augmented-reset [t]
   (assoc t :iteration 0
