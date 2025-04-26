@@ -445,7 +445,7 @@
 
 ; ---
 
-(defn augment-exponents [council-type exponents]
+#_(defn augment-exponents [council-type exponents]
   (let [augments-to-use (if (= :wc council-type)
                             [0 0.001 0.002 0.003 0.004]
                             [(- 0.002) (- 0.001) 0 0.001 0.002])]
@@ -456,17 +456,33 @@
         (partition 2)
         (map (fn [[a b]] (+ a b))))))
 
-(defn augment-wc [wc]
+#_(defn augment-wc [wc]
   (assoc wc :intermediate-input-exponents (augment-exponents :wc (get wc :intermediate-input-exponents))
             :nature-exponents (augment-exponents :wc (get wc :nature-exponents))
             :labor-exponents (augment-exponents :wc (get wc :labor-exponents))
             :pollutant-exponents (augment-exponents :wc (get wc :pollutant-exponents))))
 
-(defn augment-cc [cc]
+#_(defn augment-cc [cc]
   (assoc cc :private-good-exponents (augment-exponents :cc (get cc :private-good-exponents))
             :public-good-exponents (augment-exponents :cc (get cc :public-good-exponents))))
 
+(defn get-augment-value [council-type]
+  (rand-nth (if (= :wc council-type)
+              [0 0.001 0.002 0.003 0.004]
+              [(- 0.002) (- 0.001) 0 0.001 0.002])))
 
+(defn individual-augment [council-type set-to-use]
+  (mapv (fn [e] (assoc e :exponent (+ (get-augment-value council-type) (get e :exponent)))) set-to-use))
+
+(defn augment-wc [wc]
+  (assoc wc :intermediate-inputs (individual-augment :wc (:intermediate-inputs wc))
+            :nature (individual-augment :wc (:nature wc))
+            :labor (individual-augment :wc (:labor wc))
+            :pollutants (individual-augment :wc (:pollutants wc))))
+
+(defn augment-cc [cc]
+  (assoc cc :public-goods (individual-augment :cc (:public-goods cc))
+            :private-goods (individual-augment :cc (:private-goods cc))))
 
 (defn augmented-reset [t]
   (assoc t :iteration 0
