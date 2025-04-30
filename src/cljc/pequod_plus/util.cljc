@@ -195,12 +195,13 @@
       :pollutant-quantities pollutant-qs}))
 
 (defn get-delta [price-delta price-data-map]
-  (->> price-data-map
-       :pd
-       (* price-delta)
-       Math/abs
-       (min price-delta)
-       (max 0.001)))
+  (let [_ (println "get-delta/price-delta, map" [price-data-map price-delta])]
+     (->> price-data-map
+        :pd
+        (* price-delta)
+        Math/abs
+        (min price-delta)
+        (max 0.001))))
 
 (defn get-filtered-input-quantities [filter-factor m]
   (->> m
@@ -209,6 +210,10 @@
        (partition 2)
        (filter (fn [[a _]] (= filter-factor (get a :coefficient))))
        (map last)))
+
+(defn force-to-one [n]
+  (let [cap 0.25]
+    (if (or (> n cap) (< n (- cap))) cap (Math/abs n))))
 
 (defn compute-surpluses-prices [wcs ccs natural-resources-supply labor-supply type-to-use price-datum]
   (let [id-to-use (:id price-datum)
@@ -284,17 +289,14 @@
     (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use price-delta-to-use :supply supply :demand demand)))
 
 (defn compute-percent-surplus [supply-list demand-list surplus-list]
-  (letfn [(force-to-one [n]
-            (let [cap 0.25]
-              (if (or (> n cap) (< n (- cap))) cap (Math/abs n))))]
-    (let [averaged-s-and-d (->> (interleave (flatten supply-list)
-                                           (flatten demand-list))
-                                (partition 2)
-                                (mapv mean))]
-      (->> (interleave (flatten surplus-list) averaged-s-and-d)
-           (partition 2)
-           (mapv #(/ (first %) (last %)))
-           (mapv force-to-one)))))
+  (let [averaged-s-and-d (->> (interleave (flatten supply-list)
+                                          (flatten demand-list))
+                              (partition 2)
+                              (mapv mean))]
+    (->> (interleave (flatten surplus-list) averaged-s-and-d)
+         (partition 2)
+         (mapv #(/ (first %) (last %)))
+         (mapv force-to-one))))
 
 (defn update-percent-surplus [supply-data demand-data surplus-data]
   (let [categories [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]

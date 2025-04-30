@@ -152,12 +152,12 @@
              ]
              [:tr {:style {:border "1px solid #ddd"}}
               [:td {:style (assoc td-cell-style :font-weight "bold")} "Price Deltas"]
-              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price-delta) (:private-goods price-data))) "")]
-              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price-delta) (:intermediate-inputs price-data))) "")]
-              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price-delta) (:nature price-data))) "")]
-              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price-delta) (:labor price-data))) "")]
-              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price-delta) (:public-goods price-data))) "")]
-              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price-delta) (:pollutants price-data))) "")]
+              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :pd) (:private-goods price-data))) "")]
+              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :pd) (:intermediate-inputs price-data))) "")]
+              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :pd) (:nature price-data))) "")]
+              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :pd) (:labor price-data))) "")]
+              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :pd) (:public-goods price-data))) "")]
+              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :pd) (:pollutants price-data))) "")]
              ]
 
              [:tr {:style {:border "1px solid #ddd"}}
@@ -190,17 +190,17 @@
              [:tr {:style {:border "1px solid #ddd"}}
               [:td {:style (assoc td-cell-style :font-weight "bold")} "Percent Surplus / Threshold Met?"]
               [:td {:style (assoc td-cell-style :background (show-color (:private-goods threshold-to-use)))}
-                   (str (:private-goods threshold-to-use))]
+               (str (mapv truncate-number (:private-goods threshold-to-use)))]
               [:td {:style (assoc td-cell-style :background (show-color (:intermediate-inputs threshold-to-use)))}
-                   (str (:intermediate-inputs threshold-to-use))]
+               (str (mapv truncate-number (:intermediate-inputs threshold-to-use)))]
               [:td {:style (assoc td-cell-style :background (show-color (:nature threshold-to-use)))}
-                   (str (:nature threshold-to-use))]
+               (str (mapv truncate-number (:nature threshold-to-use)))]
               [:td {:style (assoc td-cell-style :background (show-color (:labor threshold-to-use)))}
-                   (str (:labor threshold-to-use))]
+               (str (mapv truncate-number (:labor threshold-to-use)))]
               [:td {:style (assoc td-cell-style :background (show-color (:public-goods threshold-to-use)))}
-                   (str (:public-goods threshold-to-use))]
+               (str (mapv truncate-number (:public-goods threshold-to-use)))]
               [:td {:style (assoc td-cell-style :background (show-color (:pollutants threshold-to-use)))}
-                   (str (:pollutants threshold-to-use))]]
+               (str (mapv truncate-number (:pollutants threshold-to-use)))]]
 ]]))
 
 ;; -------------------------
