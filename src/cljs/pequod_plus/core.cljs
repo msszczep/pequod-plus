@@ -30,6 +30,7 @@
          :public-goods              1
          :pollutants                1
          :price-data               {}
+         :price-delta-data         {}
          :surplus-data             {}
          :supply-data              {}
          :demand-data              {}
@@ -41,13 +42,12 @@
 (defn iterate-plan [t]
   (let [wcs (mapv (partial util/proposal (:price-data t)) (:wcs t))
         ccs (mapv (partial util/consume (t :private-goods) (t :public-good-types) (t :pollutant-types) (count (t :ccs)) (get-in t [:price-data])) (t :ccs))
-        price-data (util/update-surpluses-prices wcs ccs (:natural-resources-supply t) (:labor-supply t) (:price-data t))
+        price-data (util/update-surpluses-prices wcs ccs (:natural-resources-supply t) (:labor-supply t) (:price-data t) (:price-delta-data t))
         surplus-data (util/get-pricing-data price-data :surplus)
         supply-data (util/get-pricing-data price-data :supply)
         demand-data (util/get-pricing-data price-data :demand)
-        price-deltas (util/get-pricing-data price-data :price-delta-to-use)
-        pd-list (util/get-pricing-data price-data :pd)
-        percent-surplus (util/update-percent-surplus supply-data demand-data surplus-data)
+        price-delta-data (util/update-price-deltas supply-data demand-data surplus-data)
+        pd-data (util/update-percent-surplus supply-data demand-data surplus-data)
         threshold-report (util/report-threshold supply-data demand-data surplus-data)
         t2 (assoc t :wcs wcs
                     :ccs ccs
@@ -55,9 +55,8 @@
                     :surplus-data surplus-data
                     :supply-data supply-data
                     :demand-data demand-data
-                    :price-delta-data price-deltas
-                    :pd-data pd-list
-                    :percent-surplus percent-surplus
+                    :price-delta-data price-delta-data
+                    :pd-data pd-data
                     :threshold-report threshold-report
                     :iteration (inc (:iteration t)))]
     t2))

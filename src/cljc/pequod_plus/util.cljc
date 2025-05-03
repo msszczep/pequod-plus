@@ -194,14 +194,12 @@
       :labor-quantities labor-qs
       :pollutant-quantities pollutant-qs}))
 
-(defn get-delta [price-delta price-data-map]
-  (let [_ (println "get-delta/price-delta, map" [price-data-map price-delta])]
-     (->> price-data-map
-        :pd
-        (* price-delta)
-        Math/abs
-        (min price-delta)
-        (max 0.001))))
+(defn get-delta [price-delta price-delta-datum]
+  (->> price-delta-datum
+       (* price-delta)
+       Math/abs
+       (min price-delta)
+       (max 0.001)))
 
 (defn get-filtered-input-quantities [filter-factor m]
   (->> m
@@ -215,7 +213,7 @@
   (let [cap 0.25]
     (if (or (> n cap) (< n (- cap))) cap (Math/abs n))))
 
-(defn compute-surpluses-prices [wcs ccs natural-resources-supply labor-supply type-to-use price-datum]
+(defn compute-surpluses-prices [wcs ccs natural-resources-supply labor-supply price-delta-data type-to-use price-datum]
   (let [id-to-use (:id price-datum)
         supply (condp = type-to-use
                            :private-goods (->> wcs
@@ -282,7 +280,7 @@
                                             (reduce +)))
         surplus (- supply demand)
         price-delta-to-use (- 1.05 (Math/pow 0.5 (/ (Math/abs (* 2 surplus)) (+ demand supply))))
-        new-delta (get-delta price-delta-to-use price-datum)
+        new-delta (get-delta price-delta-to-use (get price-delta-data type-to-use 1))
         new-price (cond (pos? surplus) (* (- 1 new-delta) (:price price-datum))
                         (neg? surplus) (* (+ 1 new-delta) (:price price-datum))
                         :else (:price price-datum))]
@@ -305,9 +303,19 @@
                                                                        (get-in surplus-data [cat-to-use]))) categories)]
     (zipmap categories updates-to-use)))
 
-(defn update-surpluses-prices [wcs ccs natural-resources-supply labor-supply price-data]
+(defn update-percent-surplus [supply-list demand-list surplus-list]
+  (let [averaged-s-and-d (->> (interleave (flatten supply-list)
+                                          (flatten demand-list))
+                              (partition 2)
+                              (mapv mean))]
+    (->> (interleave (flatten surplus-list) averaged-s-and-d)
+         (partition 2)
+         (mapv #(/ (first %) (last %)))
+         (mapv force-to-one))))
+
+(defn update-surpluses-prices [wcs ccs natural-resources-supply labor-supply price-data price-delta-data]
   (let [categories [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
-        price-updates (mapv (fn [type-to-use] (mapv (partial compute-surpluses-prices wcs ccs natural-resources-supply labor-supply type-to-use) (get-in price-data [type-to-use]))) categories)]
+        price-updates (mapv (fn [type-to-use] (mapv (partial compute-surpluses-prices wcs ccs natural-resources-supply labor-supply price-delta-data type-to-use) (get-in price-data [type-to-use]))) categories)]
      (zipmap categories price-updates)))
 
 (defn compute-threshold [supply-list demand-list surplus-list]
@@ -418,8 +426,18 @@
 
 (defn get-pricing-data [price-data pricing-cat]
   (let [categories [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
-        surpluses (mapv (fn [type-to-use] (mapv pricing-cat (get-in price-data [type-to-use]))) categories)]
-    (zipmap categories surpluses)))
+        data-to-get (mapv (fn [type-to-use] (mapv pricing-cat (get-in price-data [type-to-use]))) categories)]
+    (zipmap categories data-to-get)))
+
+(defn calculate-price-deltas [supply-list demand-list surplus-list]
+  (let [surplus-list-means (mean surplus-list)
+        averaged-s-and-d (mean [(mean supply-list) (mean demand-list)])]
+        (Math/abs (/ surplus-list-means averaged-s-and-d))))
+
+(defn update-price-deltas [supply-data demand-data surplus-data]
+  (let [categories [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
+        data-to-get (mapv (fn [type-to-use] (calculate-price-deltas (get-in supply-data [type-to-use]) (get-in demand-data [type-to-use]) (get-in surplus-data [type-to-use]))) categories)]
+    (zipmap categories data-to-get)))
 
 #_(defn iterate-plan [t]
   (let [wcs (mapv (partial proposal (:price-data t)) (:wcs t))
