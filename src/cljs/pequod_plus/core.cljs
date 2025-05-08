@@ -8,7 +8,8 @@
    [accountant.core :as accountant]
    [goog.string :as gstring]
    [pequod-plus.util :as util]
-   [pequod-plus.ppex001 :as ppex001]))
+   [pequod-plus.ppex001 :as ppex001]
+   [pequod-plus.ppex002 :as ppex002]))
 
 ;; -----
 ;; Pequod Proper
@@ -81,10 +82,12 @@
                :pollutant-types pollutant-types
                :ccs (util/add-ids
                      (case @experiment
-                       "ppex001" ppex001/ccs))
+                       "ppex001" ppex001/ccs
+                       "ppex002" ppex002/ccs))
                :wcs (util/add-ids
                      (case @experiment
-                       "ppex001" ppex001/wcs))))))
+                       "ppex001" ppex001/wcs
+                       "ppex002" ppex002/wcs))))))
 
 (defn truncate-number [n]
   (if (nil? n)
@@ -110,6 +113,7 @@
                :id :experiment
                :on-change #(reset! experiment-to-use (-> % .-target .-value))}
           [:option {:key :ppex001} "ppex001"]
+          [:option {:key :ppex002} "ppex002"]
           ]]
          [:td [:input {:type "button" :value "Setup"
               :on-click #(swap! globals setup globals experiment-to-use)}]]

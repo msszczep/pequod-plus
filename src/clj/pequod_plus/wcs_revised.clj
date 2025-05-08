@@ -32,7 +32,7 @@
              (->> exponents
                   (interleave coefficients)
                   (partition 2)
-                  (map (fn [[a b]] (hash-map :coefficient a :exponent b)))))]
+                  (mapv (fn [[a b]] (hash-map :coefficient a :exponent b)))))]
     (let [[intermediate-inputs-subset 
            nature-subset 
            labor-subset 

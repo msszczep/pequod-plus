@@ -280,7 +280,7 @@
                                             (reduce +)))
         surplus (- supply demand)
         price-delta-to-use (- 1.05 (Math/pow 0.5 (/ (Math/abs (* 2 surplus)) (+ demand supply))))
-        new-delta (get-delta price-delta-to-use (get price-delta-data type-to-use 1))
+        new-delta (force-to-one (get-delta price-delta-to-use (get price-delta-data type-to-use 1)))
         new-price (cond (pos? surplus) (* (- 1 new-delta) (:price price-datum))
                         (neg? surplus) (* (+ 1 new-delta) (:price price-datum))
                         :else (:price price-datum))]
