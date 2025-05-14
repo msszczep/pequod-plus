@@ -38,7 +38,8 @@
          :threshold-report         []
          :wcs                      []
          :ccs                      []
-         :iteration                0}))
+         :iteration                0
+         :include-pollutants?      true}))
 
 (defn iterate-plan [t]
   (let [wcs (mapv (partial util/proposal (:price-data t)) (:wcs t))
