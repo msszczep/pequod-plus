@@ -32,7 +32,7 @@
              (->> exponents
                   (interleave coefficients)
                   (partition 2)
-                  (mapv (fn [[a b]] (hash-map :coefficient a :exponent b)))))]
+                  (mapv (fn [[a b]] (hash-map :coefficient a :exponent b :augment (rand-nth [0 0.001 0.002 0.003 0.004]))))))]
     (let [[intermediate-inputs-subset 
            nature-subset 
            labor-subset 
