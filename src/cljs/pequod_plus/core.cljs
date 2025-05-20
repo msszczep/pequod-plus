@@ -42,15 +42,16 @@
          :include-pollutants?      true}))
 
 (defn iterate-plan [t]
-  (let [wcs (mapv (partial util/proposal (:price-data t)) (:wcs t))
-        ccs (mapv (partial util/consume (t :private-goods) (t :public-good-types) (t :pollutant-types) (count (t :ccs)) (get-in t [:price-data])) (t :ccs))
-        price-data (util/update-surpluses-prices wcs ccs (:natural-resources-supply t) (:labor-supply t) (:price-data t) (:price-delta-data t))
-        surplus-data (util/get-pricing-data price-data :surplus)
-        supply-data (util/get-pricing-data price-data :supply)
-        demand-data (util/get-pricing-data price-data :demand)
-        price-delta-data (util/update-price-deltas supply-data demand-data surplus-data)
-        pd-data (util/update-percent-surplus supply-data demand-data surplus-data)
-        threshold-report (util/report-threshold supply-data demand-data surplus-data)
+  (let [include-pollutants? (:include-pollutants? t)
+        wcs (mapv (partial util/proposal include-pollutants? (:price-data t)) (:wcs t))
+        ccs (mapv (partial util/consume include-pollutants? (t :private-goods) (t :public-good-types) (t :pollutant-types) (count (t :ccs)) (get-in t [:price-data])) (t :ccs))
+        price-data (util/update-surpluses-prices wcs ccs (:natural-resources-supply t) (:labor-supply t) (:price-data t) (:price-delta-data t) include-pollutants?)
+        surplus-data (util/get-pricing-data price-data :surplus include-pollutants?)
+        supply-data (util/get-pricing-data price-data :supply include-pollutants?)
+        demand-data (util/get-pricing-data price-data :demand include-pollutants?)
+        price-delta-data (util/update-price-deltas supply-data demand-data surplus-data include-pollutants?)
+        pd-data (util/update-percent-surplus supply-data demand-data surplus-data include-pollutants?)
+        threshold-report (util/report-threshold supply-data demand-data surplus-data include-pollutants?)
         t2 (assoc t :wcs wcs
                     :ccs ccs
                     :price-data price-data
@@ -70,7 +71,9 @@
         labor-types (vec (range 1 (inc (t :labors))))
         private-goods (vec (range 1 (inc (t :private-goods))))
         public-good-types (vec (range 1 (inc (t :public-goods))))
-        pollutant-types (vec (range 1 (inc (t :pollutants))))]
+        pollutant-types (if (:include-pollutants? t)
+                          (vec (range 1 (inc (t :pollutants))))
+                          [])]
     (-> t
         util/initialize-prices
         (assoc :natural-resources-supply (repeat (t :resources) 1000)
@@ -131,7 +134,8 @@
     (let [td-cell-style {:border "1px solid #ddd" :text-align "center" :vertical-align "middle" :padding "8px"}
           threshold-to-use (get @globals :threshold-report)
           percent-surplus (get @globals :percent-surplus)
-          price-data (get-in @globals [:price-data])]
+          price-data (get-in @globals [:price-data])
+          ip? (get-in @globals [:include-pollutants?])]
      [:div [:h4 "Welcome to pequod-plus"]
            (all-buttons)
            [:p]
@@ -143,7 +147,7 @@
                [:th {:style td-cell-style} "Nature"]
                [:th {:style td-cell-style} "Labor"]
                [:th {:style td-cell-style} "Public Goods"]
-               [:th {:style td-cell-style} "Pollutants"]
+               (if ip? [:th {:style td-cell-style} "Pollutants"])
              ]
              [:tr {:style {:border "1px solid #ddd"}}
               [:td {:style (assoc td-cell-style :font-weight "bold")} "Prices"]
@@ -152,7 +156,7 @@
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price) (:nature price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price) (:labor price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price) (:public-goods price-data))) "")]
-              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price) (:pollutants price-data))) "")]
+              (if ip? [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :price) (:pollutants price-data))) "")])
              ]
              [:tr {:style {:border "1px solid #ddd"}}
               [:td {:style (assoc td-cell-style :font-weight "bold")} "Price Deltas"]
@@ -171,7 +175,7 @@
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :supply) (:nature price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :supply) (:labor price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :supply) (:public-goods price-data))) "")]
-              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :supply) (:pollutants price-data))) "")]
+              (if ip? [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :supply) (:pollutants price-data))) "")])
              ]
              [:tr {:style {:border "1px solid #ddd"}}
               [:td {:style (assoc td-cell-style :font-weight "bold")} "Demand"]
@@ -180,7 +184,7 @@
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :demand) (:nature price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :demand) (:labor price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :demand) (:public-goods price-data))) "")]
-              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :demand) (:pollutants price-data))) "")]
+              (if ip? [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :demand) (:pollutants price-data))) "")])
              ]
              [:tr {:style {:border "1px solid #ddd"}}
               [:td {:style (assoc td-cell-style :font-weight "bold")} "Surplus"]
@@ -189,7 +193,7 @@
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :surplus) (:nature price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :surplus) (:labor price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :surplus) (:public-goods price-data))) "")]
-              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :surplus) (:pollutants price-data))) "")]
+              (if ip? [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :surplus) (:pollutants price-data))) "")])
              ]
              [:tr {:style {:border "1px solid #ddd"}}
               [:td {:style (assoc td-cell-style :font-weight "bold")} "Percent Surplus / Threshold Met?"]
@@ -203,8 +207,8 @@
                (str (mapv truncate-number (:labor threshold-to-use)))]
               [:td {:style (assoc td-cell-style :background (show-color (:public-goods threshold-to-use)))}
                (str (mapv truncate-number (:public-goods threshold-to-use)))]
-              [:td {:style (assoc td-cell-style :background (show-color (:pollutants threshold-to-use)))}
-               (str (mapv truncate-number (:pollutants threshold-to-use)))]]
+              (if ip? [:td {:style (assoc td-cell-style :background (show-color (:pollutants threshold-to-use)))}
+                 (str (mapv truncate-number (:pollutants threshold-to-use)))])]
 ]]))
 
 ;; -------------------------

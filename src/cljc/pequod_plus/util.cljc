@@ -315,8 +315,10 @@
          (mapv #(/ (first %) (last %)))
          (mapv force-to-one))))
 
-(defn update-percent-surplus [supply-data demand-data surplus-data]
-  (let [categories [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
+(defn update-percent-surplus [supply-data demand-data surplus-data include-pollutants?]
+  (let [categories (if include-pollutants?
+                     [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
+                     [:private-goods :intermediate-inputs :nature :labor :public-goods])
         updates-to-use (mapv (fn [cat-to-use] (compute-percent-surplus (get-in supply-data [cat-to-use])
                                                                        (get-in demand-data [cat-to-use])
                                                                        (get-in surplus-data [cat-to-use]))) categories)]
@@ -332,8 +334,10 @@
          (mapv #(/ (first %) (last %)))
          (mapv force-to-one))))
 
-(defn update-surpluses-prices [wcs ccs natural-resources-supply labor-supply price-data price-delta-data]
-  (let [categories [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
+(defn update-surpluses-prices [wcs ccs natural-resources-supply labor-supply price-data price-delta-data include-pollutants?]
+  (let [categories (if include-pollutants?
+                     [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
+                     [:private-goods :intermediate-inputs :nature :labor :public-goods])
         price-updates (mapv (fn [type-to-use] (mapv (partial compute-surpluses-prices wcs ccs natural-resources-supply labor-supply price-delta-data type-to-use) (get-in price-data [type-to-use]))) categories)]
      (zipmap categories price-updates)))
 
@@ -342,17 +346,22 @@
        (partition 3)
        (mapv #(* 100 (/ (Math/abs (* 2 (first %))) (+ (second %) (last %)))))))
 
-(defn report-threshold [supply-data demand-data surplus-data]
-  (let [categories [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
+(defn report-threshold [supply-data demand-data surplus-data include-pollutants?]
+  (let [categories (if include-pollutants?
+                     [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
+                     [:private-goods :intermediate-inputs :nature :labor :public-goods])
         updates-to-use (mapv (fn [cat-to-use] (compute-threshold (get-in supply-data [cat-to-use])
                                                                  (get-in demand-data [cat-to-use])
                                                                  (get-in surplus-data [cat-to-use]))) categories)]
     (zipmap categories updates-to-use)))
 
-(defn proposal [prices wc]
+(defn proposal [include-pollutants? prices wc]
   (letfn [(map-wc-values [w k]
-            (->> [:intermediate-inputs :nature :labor :pollutants]
-                 (mapv #(mapv k (get w %)))))
+            (let [cats-to-use (if include-pollutants?
+                                [:intermediate-inputs :nature :labor :pollutants]
+                                [:intermediate-inputs :nature :labor])]
+              (->> cats-to-use
+                   (mapv #(mapv k (get w %))))))
           (get-product-category-price [prices category product]
             (->> prices
                  category
@@ -373,22 +382,31 @@
     (let [private-good-prices (:private-goods prices)
           input-prices (:intermediate-inputs prices)
           public-good-prices (:public-goods prices)
-          input-count-r (+ (count (:intermediate-inputs wc))
-                           (count (:labor wc))
-                           (count (:nature wc))
-                           (count (:pollutants wc)))
+          input-count-r (if include-pollutants?
+                          (+ (count (:intermediate-inputs wc))
+                             (count (:labor wc))
+                             (count (:nature wc))
+                             (count (:pollutants wc)))
+                          (+ (count (:intermediate-inputs wc))
+                             (count (:labor wc))
+                             (count (:nature wc))))
           total-factor-productivity (get wc :total-factor-productivity)
           effort-elasticity (get wc :effort-elasticity)
           disutility-of-effort-coefficient (get-in wc [:disutility-of-effort :coefficient])
           disutility-of-effort-exponent (get-in wc [:disutility-of-effort :exponent])
           p-i (map-wc-values wc :coefficient)
-          ps [(mapv (partial get-product-category-price prices :intermediate-inputs) (first p-i))
-              (mapv (partial get-product-category-price prices :nature) (second p-i))
-              (mapv (partial get-product-category-price prices :labor) (nth p-i 2))
-              (mapv (partial get-product-category-price prices :pollutants) (last p-i))]
+          ps (if include-pollutants?
+               [(mapv (partial get-product-category-price prices :intermediate-inputs) (first p-i))
+                (mapv (partial get-product-category-price prices :nature) (second p-i))
+                (mapv (partial get-product-category-price prices :labor) (nth p-i 2))
+                (mapv (partial get-product-category-price prices :pollutants) (last p-i))]
+               [(mapv (partial get-product-category-price prices :intermediate-inputs) (first p-i))
+                (mapv (partial get-product-category-price prices :nature) (second p-i))
+                (mapv (partial get-product-category-price prices :labor) (nth p-i 2))])
           b (map-wc-values wc :exponent)
           λ (get-lambda-o wc private-good-prices input-prices public-good-prices)]
       (condp = input-count-r
+        3 (merge wc (solution-3 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
         4 (merge wc (solution-4 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
         5 (merge wc (solution-5 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
         6 (merge wc (solution-6 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i))
@@ -398,12 +416,12 @@
 
 ; NB: Watch for pollutant-prices and scaling effects -- i.e., does a price affect all CCs or just one CC?
 ; TODO: Rename demand as permission in :pollutant-permissions ?
-(defn consume [private-goods public-goods pollutants num-of-ccs price-data cc]
+(defn consume [include-pollutants? private-goods public-goods pollutants num-of-ccs price-data cc]
   (let [private-good-exponents (mapv :exponent (:private-goods cc))
         public-good-exponents (mapv :exponent (:public-goods cc))
         private-goods-in-cc (:private-goods cc)
         public-goods-in-cc (:public-goods cc)
-        pollutant-prices (:pollutants price-data)
+        pollutant-prices (if include-pollutants? (:pollutants price-data) [])
         private-good-prices (:private-goods price-data)
         public-good-prices (:public-goods price-data)
         pollutant-permissions (:pollutant-permissions cc)
@@ -418,7 +436,9 @@
                                                                             (Math/pow (/ (* j (Math/pow p j)) k) (/ 1 (- k j))))]
                                           (assoc previous-permission :demand pollutant-permission)))
                                         pollutants)
-        income (apply + (cc :income) (mapv :demand updated-pollutant-permissions))
+        income (if include-pollutants? 
+                 (apply + (cc :income) (mapv :demand updated-pollutant-permissions))
+                 (cc :income))
         updated-private-goods (mapv
                                 (fn [private-good]
                                   (let [private-good-price (:price (first (filter #(= private-good (:id %)) private-good-prices)))
@@ -438,13 +458,19 @@
                                                                       (/ public-good-price num-of-ccs)))]
                                    (assoc previous-public-good :demand updated-demand)))
                               public-goods)]
-    (assoc cc :private-goods updated-private-goods
-              :public-goods updated-public-goods
-              :pollutant-permissions updated-pollutant-permissions
-              :income income)))
+    (if include-pollutants?
+      (assoc cc :private-goods updated-private-goods
+                :public-goods updated-public-goods
+                :pollutant-permissions updated-pollutant-permissions
+                :income income)
+      (assoc cc :private-goods updated-private-goods
+                :public-goods updated-public-goods
+                :income income))))
 
-(defn get-pricing-data [price-data pricing-cat]
-  (let [categories [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
+(defn get-pricing-data [price-data pricing-cat include-pollutants?]
+  (let [categories (if include-pollutants?
+                     [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
+                     [:private-goods :intermediate-inputs :nature :labor :public-goods])
         data-to-get (mapv (fn [type-to-use] (mapv pricing-cat (get-in price-data [type-to-use]))) categories)]
     (zipmap categories data-to-get)))
 
@@ -453,8 +479,10 @@
         averaged-s-and-d (mean [(mean supply-list) (mean demand-list)])]
         (Math/abs (/ surplus-list-means averaged-s-and-d))))
 
-(defn update-price-deltas [supply-data demand-data surplus-data]
-  (let [categories [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
+(defn update-price-deltas [supply-data demand-data surplus-data include-pollutants?]
+  (let [categories (if include-pollutants?
+                     [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
+                     [:private-goods :intermediate-inputs :nature :labor :public-goods])
         data-to-get (mapv (fn [type-to-use] (calculate-price-deltas (get-in supply-data [type-to-use]) (get-in demand-data [type-to-use]) (get-in surplus-data [type-to-use]))) categories)]
     (zipmap categories data-to-get)))
 
@@ -483,23 +511,19 @@
     t2))
 ; ---
 
-(defn get-augment-value [council-type]
-  (rand-nth (if (= :wc council-type)
-              [0 0.001 0.002 0.003 0.004]
-              [(- 0.002) (- 0.001) 0 0.001 0.002])))
-
-(defn individual-augment [council-type set-to-use]
-  (mapv (fn [e] (assoc e :exponent (+ (get-augment-value council-type) (get e :exponent)))) set-to-use))
+(defn individual-augment [set-to-use]
+  (mapv (fn [e] (assoc e :exponent (+ (get e :augment) (get e :exponent)))) set-to-use))
 
 (defn augment-wc [wc]
-  (assoc wc :intermediate-inputs (individual-augment :wc (:intermediate-inputs wc))
-            :nature (individual-augment :wc (:nature wc))
-            :labor (individual-augment :wc (:labor wc))
-            :pollutants (individual-augment :wc (:pollutants wc))))
+  (assoc wc :intermediate-inputs (individual-augment (:intermediate-inputs wc))
+            :nature (individual-augment (:nature wc))
+            :labor (individual-augment (:labor wc))
+            :pollutants (individual-augment (:pollutants wc))))
 
 (defn augment-cc [cc]
-  (assoc cc :public-goods (individual-augment :cc (:public-goods cc))
-            :private-goods (individual-augment :cc (:private-goods cc))))
+  (assoc cc :public-goods (individual-augment (:public-goods cc))
+            :private-goods (individual-augment (:private-goods cc))
+            :pollutant-permissions (individual-augment (:pollutant-permissions cc))))
 
 (defn augmented-reset [t]
   (assoc t :iteration 0
