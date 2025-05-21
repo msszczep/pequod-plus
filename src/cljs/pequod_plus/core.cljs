@@ -9,7 +9,8 @@
    [goog.string :as gstring]
    [pequod-plus.util :as util]
    [pequod-plus.ppex001 :as ppex001]
-   [pequod-plus.ppex002 :as ppex002]))
+   [pequod-plus.ppex002 :as ppex002]
+   [pequod-plus.ppex003 :as ppex003]))
 
 ;; -----
 ;; Pequod Proper
@@ -39,7 +40,7 @@
          :wcs                      []
          :ccs                      []
          :iteration                0
-         :include-pollutants?      true}))
+         :include-pollutants?      false}))
 
 (defn iterate-plan [t]
   (let [include-pollutants? (:include-pollutants? t)
@@ -87,11 +88,13 @@
                :ccs (util/add-ids
                      (case @experiment
                        "ppex001" ppex001/ccs
-                       "ppex002" ppex002/ccs))
+                       "ppex002" ppex002/ccs
+                       "ppex003" ppex003/ccs))
                :wcs (util/add-ids
                      (case @experiment
                        "ppex001" ppex001/wcs
-                       "ppex002" ppex002/wcs))))))
+                       "ppex002" ppex002/wcs
+                       "ppex003" ppex003/wcs))))))
 
 (defn truncate-number [n]
   (if (nil? n)
@@ -118,6 +121,7 @@
                :on-change #(reset! experiment-to-use (-> % .-target .-value))}
           [:option {:key :ppex001} "ppex001"]
           [:option {:key :ppex002} "ppex002"]
+          [:option {:key :ppex003} "ppex003"]
           ]]
          [:td [:input {:type "button" :value "Setup"
               :on-click #(swap! globals setup globals experiment-to-use)}]]
@@ -165,7 +169,7 @@
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :pd) (:nature price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :pd) (:labor price-data))) "")]
               [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :pd) (:public-goods price-data))) "")]
-              [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :pd) (:pollutants price-data))) "")]
+              (if ip? [:td {:style td-cell-style} (or (str (mapv (comp truncate-number :pd) (:pollutants price-data))) "")])
              ]
 
              [:tr {:style {:border "1px solid #ddd"}}
