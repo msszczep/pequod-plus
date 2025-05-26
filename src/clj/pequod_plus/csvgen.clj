@@ -1,5 +1,5 @@
-(ns pequod-cljs.csvgen
-   (:require [pequod-plus.ppex04 :as ppex04]
+(ns pequod-plus.csvgen
+   (:require [pequod-plus.ppex004 :as ppex004]
              [pequod-plus.util :as util]))
 
 (def globals
@@ -43,7 +43,7 @@
         (every? #(< % 20) tre) :orange
         :else :red))
 
-(defn iterate-plan [t]
+(defn iterate-plan [t _]
   (let [include-pollutants? (:include-pollutants? t)
         wcs (mapv (partial util/proposal include-pollutants? (:price-data t)) (:wcs t))
         ccs (mapv (partial util/consume include-pollutants? (t :private-goods) (t :public-good-types) (t :pollutant-types) (count (t :ccs)) (get-in t [:price-data])) (t :ccs))
@@ -54,7 +54,7 @@
         price-delta-data (util/update-price-deltas supply-data demand-data surplus-data include-pollutants?)
         pd-data (util/update-percent-surplus supply-data demand-data surplus-data include-pollutants?)
         threshold-report (util/report-threshold supply-data demand-data surplus-data include-pollutants?)
-        color (show-color threshold-report)
+        color (zipmap (keys threshold-report) (map show-color (vals threshold-report)))
         t2 (assoc t :wcs wcs
                     :ccs ccs
                     :price-data price-data
@@ -70,55 +70,12 @@
 
 (defn print-csv [args-to-print data]
   (let [all-args (flatten (mapv (partial get data) args-to-print))]
-    (clojure.string/join "," all-args)))
+    (clojure.string/join "|" all-args)))
 
-(defn get-csv-header [data]
-  (let [spaces-map [:private-good-prices
-                    :intermediate-input-prices
-                    :nature-prices
-                    :labor-prices
-                    :public-good-prices
-                    :pollutant-prices
-                    :new-deltas-private-goods
-                    :new-deltas-intermediate-inputs
-                    :new-deltas-nature
-                    :new-deltas-labor
-                    :new-deltas-public-goods
-                    :new-deltas-pollutants
-                    :pdlist-private-goods
-                    :pdlist-intermediate-goods
-                    :pdlist-nature
-                    :pdlist-labor
-                    :pdlist-public-goods
-                    :pdlist-pollutants
-                    :supply-private-goods
-                    :supply-intermediate-inputs
-                    :supply-nature
-                    :supply-labor
-                    :supply-public-goods
-                    :supply-pollutants
-                    :demand-private-goods
-                    :demand-intermediate-inputs
-                    :demand-nature
-                    :demand-labor
-                    :demand-public-goods
-                    :demand-pollutants
-                    :surplus-private-goods
-                    :surplus-intermediate-inputs
-                    :surplus-nature
-                    :surplus-labor
-                    :surplus-public-goods
-                    :suprlus-pollutants
-                    :threshold-report-private-goods
-                    :threshold-report-intermediate-inputs
-                    :threshold-report-nature
-                    :threshold-report-labor
-                    :threshold-report-public-goods
-                    :threshold-report-pollutants]
-     headers-other (for [k spaces-map
-                      n (range 1 (if (re-find #"public-good|pollutant" (str k)) 2 11))] 
-                  (str k "-" n))]
-    (concat [:iteration :color] headers-other)))
+(defn augmented-reset [t _]
+  (assoc t :iteration 0
+           :ccs (mapv util/augment-cc (get t :ccs))
+           :wcs (mapv util/augment-wc (get t :wcs))))
 
 (defn setup [t _ experiment]
   (let [intermediate-inputs (vec (range 1 (inc (t :intermediate-inputs))))
@@ -139,38 +96,29 @@
                :labor-types labor-types
                :public-good-types public-good-types
                :pollutant-types pollutant-types
-               :ccs (util/add-ids
-                     (case @experiment
-                       "ppex001" ppex001/ccs
-                       "ppex002" ppex002/ccs
-                       "ppex003" ppex003/ccs
-                       "ppex004" ppex004/ccs))
-               :wcs (util/add-ids
-                     (case @experiment
-                       "ppex001" ppex001/wcs
-                       "ppex002" ppex002/wcs
-                       "ppex003" ppex003/wcs
-                       "ppex004" ppex004/wcs))))))
+               :ccs (util/add-ids ppex004/ccs)
+               :wcs (util/add-ids ppex004/wcs)))))
+
+; [:iteration :color :price-data :price-delta-data :pd-data :supply-data :demand-data :surplus-data :threshold-report]
 
 (defn -main [& [ns-to-use]]
-  (let [keys-to-print [:iteration :color :private-good-prices :intermediate-input-prices :nature-prices :labor-prices :public-good-prices :pollutant-prices :private-good-new-deltas :intermediate-input-new-deltas :nature-new-deltas :labor-new-deltas :public-good-new-deltas :pollutant-new-deltas :pdlist :supply-list :demand-list :surplus-list :threshold-report]
-        spacing-count 3501 ; (50 * 5) + (100 * 6) + 2 - 1
-        ]
+  (let [keys-to-print [:iteration :color :threshold-report]]
     (do
       (swap! globals setup globals ns-to-use)
-      (println (clojure.string/join "," (get-csv-header @globals)))
+      (println (clojure.string/join "|" keys-to-print))
       (println (print-csv keys-to-print @globals))
-      (while (and (some #(> % 5) (get @globals :threshold-report))
+      (while (and (or (empty? (flatten (vals (get @globals :threshold-report))))
+                      (some #(> % 5) (flatten (vals (get @globals :threshold-report)))))
                   (> 200 (get @globals :iteration)))
         (do
           (swap! globals iterate-plan globals) 
           (println (print-csv keys-to-print @globals))))
-      
-      (swap! globals util/augmented-reset globals)
+      (swap! globals augmented-reset globals)
+      (println "AUGMENTED_RESET")
       (do
-        (swap! globals iterate-plan globals) 
+        (swap! globals iterate-plan globals)
         (println (print-csv keys-to-print @globals)))
-      (while (and (some #(> % 5) (get @globals :threshold-report))
+      (while (and (some #(> % 5) (flatten (vals (get @globals :threshold-report))))
                   (> 200 (get @globals :iteration)))
         (do
           (swap! globals iterate-plan globals) 
