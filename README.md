@@ -27,6 +27,8 @@ For example:
 
 ```
 time lein run -m pequod-plus.gen ppex001 > ppex001.cljs
+
+time lein run -m pequod-plus.gen-revised ppex004 > ppex004.clj
 ```
 
 2.  Move the councils into `src/cljs/pequod_plus`

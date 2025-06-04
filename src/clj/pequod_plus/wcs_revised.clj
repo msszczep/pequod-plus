@@ -61,7 +61,7 @@
                   )))))
 
 (defn create-wcs-bulk [num-ind-0 num-ind-1 num-ind-2]
-  (let [input-cats (vec (range 1 11))]
+  (let [input-cats (vec (range 1 101))]
     (->> (merge (create-wcs num-ind-0 input-cats 0)
                 (create-wcs num-ind-1 input-cats 1)
                 (create-wcs num-ind-2 input-cats 2))
