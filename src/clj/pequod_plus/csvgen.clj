@@ -9,11 +9,11 @@
          :init-nature-price       700
          :init-public-good-price  700
          :init-pollutant-price    700
-         :private-goods            10
-         :intermediate-inputs      10
-         :resources                10
-         :labors                   10
-         :public-goods              1
+         :private-goods           100
+         :intermediate-inputs     100
+         :resources               100
+         :labors                  100
+         :public-goods             10
          :pollutants                1
          :price-data               {}
          :price-delta-data         {}

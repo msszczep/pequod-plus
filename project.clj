@@ -21,7 +21,7 @@
                  [venantius/accountant "0.2.5"
                   :exclusions [org.clojure/tools.reader]]]
 
-  :jvm-opts ["-Xmx1G"]
+  :jvm-opts ["-Xmx2G"]
   
   :plugins [[lein-environ "1.1.0"]
             [lein-cljsbuild "1.1.7"]
