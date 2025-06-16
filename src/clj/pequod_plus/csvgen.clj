@@ -13,7 +13,7 @@
          :intermediate-inputs     100
          :resources               100
          :labors                  100
-         :public-goods             10
+         :public-goods            100
          :pollutants                1
          :price-data               {}
          :price-delta-data         {}

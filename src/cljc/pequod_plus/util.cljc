@@ -410,7 +410,7 @@
                   product (:product w)]
               (cond (= 0 industry) (get-product-price product private-good-prices)
                     (= 1 industry) (get-product-price product input-prices)
-                    (= 2 industry) (get-product-price 1 public-good-prices))))]
+                    (= 2 industry) (get-product-price product public-good-prices))))]
     (let [private-good-prices (:private-goods prices)
           input-prices (:intermediate-inputs prices)
           public-good-prices (:public-goods prices)

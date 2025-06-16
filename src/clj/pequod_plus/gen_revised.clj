@@ -14,7 +14,7 @@
   (println (format "(ns pequod-plus.%s)" ns-to-use))
   (println "")
   (println "(def ccs ")
-  (clojure.pprint/pprint (ccs/create-ccs-bulk 30000 100 10 1))
+  (clojure.pprint/pprint (ccs/create-ccs-bulk 30000 100 100 1))
   (println ")")
   (println "")
   (println "(def wcs ")
