@@ -11,12 +11,10 @@
       (recur (inc i) (rest cs) (conj updated-cs (assoc (first cs) :id i))))))
 
 (defn generate-goods [max-exponent-threshold num-goods]
-  (->> #(hash-map
-         :exponent (+ max-exponent-threshold (rand max-exponent-threshold))
-         :demand 0)
-       repeatedly
-       (take num-goods)
-       (into [])))
+  (mapv (fn [x] (hash-map :demand 0
+                          :exponent (+ x (rand x))
+                          :augment (rand-nth [(- 0.002) (- 0.001) 0 0.001 0.002])))
+        (repeat num-goods max-exponent-threshold)))
 
 (defn gen-cc [num-private-goods num-public-goods num-pollutants i]
   (let [max-exponent-threshold 0.005

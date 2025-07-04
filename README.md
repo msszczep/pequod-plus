@@ -27,6 +27,8 @@ For example:
 
 ```
 time lein run -m pequod-plus.gen ppex001 > ppex001.cljs
+
+time lein run -m pequod-plus.gen-revised ppex004 > ppex004.clj
 ```
 
 2.  Move the councils into `src/cljs/pequod_plus`
@@ -36,6 +38,12 @@ mv ppex001.cljs src/cljs/pequod_plus/ppex001.cljs
 ```
 
 3.  Run `lein figwheel`, as listed below.
+
+## CSVGen
+
+```
+rm results004.csv; time lein run -m pequod-plus.csvgen ppex004 > ppex004.csv
+```
 
 ## Development mode
 
