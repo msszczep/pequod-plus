@@ -10,7 +10,8 @@
    [pequod-plus.util :as util]
    [pequod-plus.ppex001 :as ppex001]
    [pequod-plus.ppex002 :as ppex002]
-   [pequod-plus.ppex003 :as ppex003]))
+   [pequod-plus.ppex003 :as ppex003]
+   [pequod-plus.ppex004 :as ppex004]))
 
 ;; -----
 ;; Pequod Proper
@@ -40,7 +41,7 @@
          :wcs                      []
          :ccs                      []
          :iteration                0
-         :include-pollutants?      false}))
+         :include-pollutants?      true}))
 
 (defn iterate-plan [t]
   (let [include-pollutants? (:include-pollutants? t)
@@ -89,12 +90,14 @@
                      (case @experiment
                        "ppex001" ppex001/ccs
                        "ppex002" ppex002/ccs
-                       "ppex003" ppex003/ccs))
+                       "ppex003" ppex003/ccs
+                       "ppex004" ppex004/ccs))
                :wcs (util/add-ids
                      (case @experiment
                        "ppex001" ppex001/wcs
                        "ppex002" ppex002/wcs
-                       "ppex003" ppex003/wcs))))))
+                       "ppex003" ppex003/wcs
+                       "ppex004" ppex004/wcs))))))
 
 (defn truncate-number [n]
   (if (nil? n)
@@ -122,6 +125,7 @@
           [:option {:key :ppex001} "ppex001"]
           [:option {:key :ppex002} "ppex002"]
           [:option {:key :ppex003} "ppex003"]
+          [:option {:key :ppex004} "ppex004"]
           ]]
          [:td [:input {:type "button" :value "Setup"
               :on-click #(swap! globals setup globals experiment-to-use)}]]
