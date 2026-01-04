@@ -1,0 +1,41 @@
+January 3, 2026
+
+I tried to run `lein figwheel` on my new Mac.  Unable to, apparently because of different incompatible architecture.  Switched to my Ubuntu Linux box; `lein figwheel` worked right away.  Will want to get the Mac to workbut will address that later.
+
+Getting back to the swing of things: Running ppex002 and ppex003, each with 300 WCs and 300 CCs.  I'm also resurrecting ppex004 in CLJS (not to be confused by the experiment in CLJ whose results were shared in Montreal). Results of all of the above are below:
+
+|Experiment|#WCs|#CCs|#Iterations Year One|#Iterations Year Two|Has Pollutants?|
+|-|-|-|-|-|
+|ppex002|300|300|64|1|Yes|
+|ppex003|300|300|57|12|Yes|
+|ppex004|3000|3000|96|11|Yes|
+|ppex002|300|300|42|1|No|
+|ppex003|300|300|55|5|No|
+|ppex004|3000|3000|41|6|No|
+
+FYI: ppex004 with pollutants caused the Ubuntu box to freeze.  The results are based off a CSV generating from the same output.
+
+As it stands:
+
+* Cannot run 6000 councils in Ubuntu
+* Cannot run figwheel on Mac
+
+---
+
+January 4, 2026
+
+Update: Worked to get figwheel running again on a Mac.  The issue was that I needed to get the latest version of JNA (Java Native Access) to match the ccompatibility of my new Apple Silicon Mac.  Once I got that, the app worked on my new Mac.
+
+Getting back to the swing of things: Running ppex002 and ppex003, each with 300 WCs and 300 CCs.  I'm also resurrecting ppex004 in CLJS (not to be confused by the experiment in CLJ whose results were shared in Montreal). Results of all of the above are below:
+
+Also got 6000 councils loaded into pequod-plus CLJS, with experiment 004.  The results are as follows:
+
+|Experiment|#WCs|#CCs|#Iterations Year One|#Iterations Year Two|Has Pollutants?|
+|-|-|-|-|-|
+|ppex004|3000|3000|69|11|Yes|
+|ppex004|3000|3000|41|6|No|
+
+I'm going to figure out how to speed up experiments when scaled up to 30,000 WCs and 30,000 CCs.  Idea: Use multithreading?
+
+The approach to use: a massive code-optimization and cleanup effort.  I realized that there's a LOT of room for improvement.  That improvement is underway, and likely will take a number of weeks to complete. 
+
