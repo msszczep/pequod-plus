@@ -42,3 +42,7 @@ The approach to use: a massive code-optimization and cleanup effort.  I realized
 January 10, 2026
 
 Spent the day optimizing.  Commits are noted in the github repository, main branch.  Got solution-4 and solution-5 as optimized as reasonably feasible.  Had a setback, but was able to overcome it.
+
+January 18, 2026
+
+Optimizations are now complete to the extent determined and readily achievable.  Code seems to work well for extant experiments.  I created a new experiment to test scaling up -- 6000 WCs, 6000 CCs, double the current largest total.  Speed of CLJS seems okay considering the scale, but the numbers are wildly crazy: seeing logs of NAN and even Infinity values in the output.  Not sure what's going on there.  Will have to dig to find out.  I'm debating with myself whether or not to go down this route, and how.
