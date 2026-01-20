@@ -33,9 +33,9 @@
                   (interleave coefficients)
                   (partition 2)
                   (mapv (fn [[a b]] (hash-map :coefficient a :exponent b :augment (rand-nth [0 0.001 0.002 0.003 0.004]))))))]
-    (let [[intermediate-inputs-subset 
-           nature-subset 
-           labor-subset 
+    (let [[intermediate-inputs-subset
+           nature-subset
+           labor-subset
            pollutant-subset] (get-random-subsets)
           production-inputs-intermediate-input (determine-production-input intermediate-inputs-subset intermediate-input-types)
           production-inputs-nature (determine-production-input nature-subset nature-types)
@@ -61,7 +61,7 @@
                   )))))
 
 (defn create-wcs-bulk [num-ind-0 num-ind-1 num-ind-2]
-  (let [input-cats (vec (range 1 101))]
+  (let [input-cats (vec (range 1 11))]
     (->> (merge (create-wcs num-ind-0 input-cats 0)
                 (create-wcs num-ind-1 input-cats 1)
                 (create-wcs num-ind-2 input-cats 2))

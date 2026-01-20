@@ -46,3 +46,7 @@ Spent the day optimizing.  Commits are noted in the github repository, main bran
 January 18, 2026
 
 Optimizations are now complete to the extent determined and readily achievable.  Code seems to work well for extant experiments.  I created a new experiment to test scaling up -- 6000 WCs, 6000 CCs, double the current largest total.  Speed of CLJS seems okay considering the scale, but the numbers are wildly crazy: seeing logs of NAN and even Infinity values in the output.  Not sure what's going on there.  Will have to dig to find out.  I'm debating with myself whether or not to go down this route, and how.
+
+January 19, 2026
+
+Got the problem fixed: The coefficients for WCs were based on a scale of 100 rather than 10.  Updating that fixed matters.  In fact, I was able to create an experiment of 12K councils that was able to converge in 14 year-two iterations.  Updating the code and the experiment to compensate.
