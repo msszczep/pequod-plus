@@ -50,3 +50,43 @@ Optimizations are now complete to the extent determined and readily achievable. 
 January 19, 2026
 
 Got the problem fixed: The coefficients for WCs were based on a scale of 100 rather than 10.  Updating that fixed matters.  In fact, I was able to create an experiment of 12K councils that was able to converge in 14 year-two iterations.  Updating the code and the experiment to compensate.
+
+January 20, 2026
+
+We're now up to 18,000 councils in the cljs code, with each iteration taking roughly two seconds of processing time in the browser.  I think we can deem the optimizations a success and can move on to the next phase.  Quoting from Robin:
+
+"The first thing you are going to work on is figuring out why the number of iterations increased substantially when we introduced one pollutant. I have an hypothesis we can easily test:
+
+"I think the coefficients I gave you for the inputs in the production functions for WCs were way too big. I had no idea what size to choose. It could be that I chose coefficients so large that it made producing things unrealistically expensive because we were signaling that producing everything made the damage to the environment way too large. If I'm right, it may be taking a lot of iterations to find a solution because the optimal solution is very unrealistic.
+
+"One way to check is to see if the output of goods and services we arrived a with the pollutants as optimal is ridiculously less than the outputs we would arrive at if we simply run the simulations with no pollutants at all.
+
+"If I'm right we can fix things very easily. We just need to cut those coefficients for the pollutants in our production functions by say, a factor of ten. If I'm right we should achieve convergence in noticeably fewer iterations even when we have "reasonably realistic" pollutants in the system."
+
+I'm not sure what is meant exactly by "coefficients".  Let me call Robin and find out.
+
+January 21, 2026
+
+With no further code changes (and admittedly with a newer and faster computer), I'm running the csvgen code, using the optimizations I've made in the past week:
+
+$ time lein run -m pequod-plus.csvgen ppex004 > ppex004-with-pollutants-after-optimization.csv
+
+So far (and this is still preliminary, we'll wait until the full experiment is complete) -- the results are dramatically faster.  An iteration with 60,000 councils now takes about two minutes, which would mean a completion time from start to finish of around two hours, as opposed to something like 12 hours.  I'll wait to see how long this experiment takes.
+
+January 24, 2026
+
+```
+mitchell:2026-01-24 10:08:08:~/pequod/pequod-plus$ time lein run -m pequod-plus.csvgen ppex004 > ppex004-with-pollutants-after-optimization.csv
+
+real	240m35.310s
+user	510m4.903s
+sys	8m4.632s
+```
+
+Got a full-sized experiment complete, with pollutants, in exactly four hours -- a testament to both the improvement in the code _and_ the faster computer I'm using (which at one point was using three cores to finish the job).
+
+This is encouraging, and a considerable speed-up from the work for Montreal where it would take upwards of 12 hours to process a single experiment.
+
+January 31, 2026
+
+Good progress.  Met with Robin where we agreed on what to do next: Basically for the experiments we ran for Montreal, change each pollutant exponent (divide by 10) and rerun the experiment.  Robin and I sent an email to Josh about payment details.  I am now clear on what to do, and can now proceed. 
