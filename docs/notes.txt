@@ -89,4 +89,10 @@ This is encouraging, and a considerable speed-up from the work for Montreal wher
 
 January 31, 2026
 
-Good progress.  Met with Robin where we agreed on what to do next: Basically for the experiments we ran for Montreal, change each pollutant exponent (divide by 10) and rerun the experiment.  Robin and I sent an email to Josh about payment details.  I am now clear on what to do, and can now proceed. 
+Good progress.  Met with Robin where we agreed on what to do next: Basically for the experiments we ran for Montreal, change each pollutant exponent (divide by 10) and rerun the experiment.  Robin and I sent an email to Josh about payment details.  I am now clear on what to do, and can now proceed.
+
+Update: I have reviewed the experimental results from Montreal, and compared them with the results of my most recent update.  Also: I am writing a Python script to update the contents of a ppex file per Robin's instructions; luckily, I can do this with some reasonably simple string matching and manipulation, and am working on this presently. 
+
+February 1, 2026
+
+First take didn't take.  The Python script is too inefficient as written; something that should have completed in maybe a matter of minutes took hours to complete.  Will need to revise.  Doing that next.
