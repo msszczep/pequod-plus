@@ -96,3 +96,107 @@ Update: I have reviewed the experimental results from Montreal, and compared the
 February 1, 2026
 
 First take didn't take.  The Python script is too inefficient as written; something that should have completed in maybe a matter of minutes took hours to complete.  Will need to revise.  Doing that next.
+
+February 14, 2026
+
+Much better.  Updated the updating script, which went from 2 hours to 3 seconds.  Ran an updated experiment which went as follows:
+
+$ time lein run -m pequod-plus.csvgen ppex004 > ppex004-after-divide-by-ten.csv
+OpenJDK 64-Bit Server VM warning: Options -Xverify:none and -noverify were deprecated in JDK 13 and will likely be removed in a future release.
+Warning: implicit hook found: lein-environ.plugin/hooks
+Hooks are deprecated and will be removed in a future version.
+WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.utils, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+WARNING: update-keys already refers to: #'clojure.core/update-keys in namespace: clojure.tools.analyzer.utils, being replaced by: #'clojure.tools.analyzer.utils/update-keys
+WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+WARNING: update-keys already refers to: #'clojure.core/update-keys in namespace: clojure.tools.analyzer, being replaced by: #'clojure.tools.analyzer.utils/update-keys
+WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.passes, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.passes.uniquify, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+
+real	203m13.368s
+user	364m38.665s
+sys	5m47.261s
+
+Numbers are encouraging.  Will check with Robin tomorrow to see if they're good enough.
+
+===
+
+February 15, 2026:
+
+More encouraging results --
+
+$ time lein run -m pequod-plus.csvgen ppex005 > ppex005-after-divide-by-ten.csv
+OpenJDK 64-Bit Server VM warning: Options -Xverify:none and -noverify were deprecated in JDK 13 and will likely be removed in a future release.
+Warning: implicit hook found: lein-environ.plugin/hooks
+Hooks are deprecated and will be removed in a future version.
+WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.utils, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+WARNING: update-keys already refers to: #'clojure.core/update-keys in namespace: clojure.tools.analyzer.utils, being replaced by: #'clojure.tools.analyzer.utils/update-keys
+WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+WARNING: update-keys already refers to: #'clojure.core/update-keys in namespace: clojure.tools.analyzer, being replaced by: #'clojure.tools.analyzer.utils/update-keys
+WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.passes, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.passes.uniquify, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+
+real	208m41.699s
+user	350m11.070s
+sys	59m2.997s
+
+===
+
+Third experiment on February 15, 2026:
+
+mitchell:2026-02-15 12:26:51:~/pequod/pequod-plus$ time lein run -m pequod-plus.csvgen ppex001 > ppex001-after-divide-by-ten.csv
+OpenJDK 64-Bit Server VM warning: Options -Xverify:none and -noverify were deprecated in JDK 13 and will likely be removed in a future release.
+Warning: implicit hook found: lein-environ.plugin/hooks
+Hooks are deprecated and will be removed in a future version.
+WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.utils, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+WARNING: update-keys already refers to: #'clojure.core/update-keys in namespace: clojure.tools.analyzer.utils, being replaced by: #'clojure.tools.analyzer.utils/update-keys
+WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+WARNING: update-keys already refers to: #'clojure.core/update-keys in namespace: clojure.tools.analyzer, being replaced by: #'clojure.tools.analyzer.utils/update-keys
+WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.passes, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.passes.uniquify, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+
+real	196m7.577s
+user	352m53.246s
+sys	11m9.521s
+
+Each one measures 13 iterations after Year Two.  Spoke briefly with Robin tonight; he thinks we could reduce the numbers by a factor of 20 rather than 10.  I may well do that, but first let's complete this round of experiments.
+
+==
+
+February 28, 2026
+
+mitchell:2026-02-28 19:17:56:~/pequod/pequod-plus$ time lein run -m pequod-plus.csvgen ppex002 > ppex002-after-divide-by-ten.csv
+OpenJDK 64-Bit Server VM warning: Options -Xverify:none and -noverify were deprecated in JDK 13 and will likely be removed in a future release.
+Warning: implicit hook found: lein-environ.plugin/hooks
+Hooks are deprecated and will be removed in a future version.
+WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.utils, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+WARNING: update-keys already refers to: #'clojure.core/update-keys in namespace: clojure.tools.analyzer.utils, being replaced by: #'clojure.tools.analyzer.utils/update-keys
+WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+WARNING: update-keys already refers to: #'clojure.core/update-keys in namespace: clojure.tools.analyzer, being replaced by: #'clojure.tools.analyzer.utils/update-keys
+WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.passes, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.passes.uniquify, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+
+real	159m56.236s
+user	355m33.714s
+sys	6m17.378s
+
+===
+
+March 1, 2026
+
+mitchell:2026-03-01 09:43:44:~/pequod/pequod-plus$ time lein run -m pequod-plus.csvgen ppex003 > ppex003-after-divide-by-ten.csv
+OpenJDK 64-Bit Server VM warning: Options -Xverify:none and -noverify were deprecated in JDK 13 and will likely be removed in a future release.
+Warning: implicit hook found: lein-environ.plugin/hooks
+Hooks are deprecated and will be removed in a future version.
+WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.utils, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+WARNING: update-keys already refers to: #'clojure.core/update-keys in namespace: clojure.tools.analyzer.utils, being replaced by: #'clojure.tools.analyzer.utils/update-keys
+WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+WARNING: update-keys already refers to: #'clojure.core/update-keys in namespace: clojure.tools.analyzer, being replaced by: #'clojure.tools.analyzer.utils/update-keys
+WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.passes, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.passes.uniquify, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+[1]+  Done                    emacs divide-by-ten.py  (wd: ~/pequod/pequod-plus/src/clj/pequod_plus)
+(wd now: ~/pequod/pequod-plus)
+
+real	253m10.673s
+user	361m39.489s
+sys	12m51.340s
+mitchell:2026-03-01 14:08:46:~/pequod/pequod-plus$
