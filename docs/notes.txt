@@ -297,3 +297,17 @@ sys	8m14.350s
 March 21, 2026
 
 Made progress on getting the gaming laptop ready: Java and Leiningen are added.  I can create a REPL, but getting the REPL to do something is problematic.  Working on fixing that; also I might see if the old laptop can still crunch numbers at scale (it might!)
+
+---
+
+Number of weekends in each month:
+Jan 5
+Feb 4
+Mar 4
+Total: 13
+
+13 * 8 = 104 hours thus far need to have worked
+58.5 hours thus far clocked
+45.5 need to work
+
+more docs/work.log | awk 'BEGIN {FS="|"; sum = 0} {sum += $2} END {print sum}'
