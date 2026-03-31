@@ -281,7 +281,6 @@
         c-log-k (* c log-k)
         c-log-s (* c log-s)
         k-log-λ (- (* k log-λ))
-        k-log-λ (* k log-λ)
         k-log-p1 (* k log-p1)
         k-log-p2 (* k log-p2)
         k-log-p3 (* k log-p3)
