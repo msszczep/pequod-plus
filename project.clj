@@ -1,6 +1,6 @@
 (defproject pequod-plus "0.1.0-SNAPSHOT"
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
+  :description "Next iteration of Pequod, the particpatory planning procedure prototype"
+  :url "https://github.com/msszczep/pequod-plus"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
 
@@ -18,6 +18,8 @@
                   :scope "provided"]
                  [metosin/reitit "0.5.18"]
                  [pez/clerk "1.0.0"]
+                 [com.github.seancorfield/next.jdbc "1.3.1093"]
+                 [org.xerial/sqlite-jdbc "3.51.3.0"]
                  [venantius/accountant "0.2.5"
                   :exclusions [org.clojure/tools.reader]]]
 

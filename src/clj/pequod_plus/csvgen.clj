@@ -1,6 +1,8 @@
 (ns pequod-plus.csvgen
-   (:require [pequod-plus.ppex004 :as ppex004]
-             [pequod-plus.util :as util]))
+   (:require [pequod-plus.util :as util]
+             [clojure.edn :as edn]
+             [next.jdbc :as jdbc]
+             [clojure.java.io :as io]))
 
 (def globals
   (atom {:init-private-good-price 700
@@ -24,7 +26,8 @@
          :wcs                      []
          :ccs                      []
          :iteration                0
-         :include-pollutants?      true}))
+         :include-pollutants?      true
+         :ds                       (jdbc/get-datasource {:dbtype "sqlite" :dbname "pequod.db"})}))
 
 (defn compute-gdp [supply-list private-good-prices public-good-prices]
   (let [[private-good-supply _ _ _ public-good-supply] supply-list]
@@ -68,6 +71,31 @@
                     :color color)]
     t2))
 
+(defn iterate-plan-improved [t _]
+  (let [include-pollutants? (:include-pollutants? t)
+        ds (:ds t)
+        wcs (mapv (partial util/proposal include-pollutants? (:price-data t)) (:wcs t))
+        _ (util/consume-improved ds include-pollutants? (t :private-goods) (t :public-good-types) (t :pollutant-types) (t :num-of-ccs) (get-in t [:price-data]))
+        price-data (util/update-surpluses-prices-improved wcs (:num-of-ccs t) (:pollutants-demand-sum t) (:private-goods-demand-sum t) (:public-goods-demand-sum t) (:natural-resources-supply t) (:labor-supply t) (:price-data t) (:price-delta-data t) include-pollutants?)
+        surplus-data (util/get-pricing-data price-data :surplus include-pollutants?)
+        supply-data (util/get-pricing-data price-data :supply include-pollutants?)
+        demand-data (util/get-pricing-data price-data :demand include-pollutants?)
+        price-delta-data (util/update-price-deltas supply-data demand-data surplus-data include-pollutants?)
+        pd-data (util/update-percent-surplus supply-data demand-data surplus-data include-pollutants?)
+        threshold-report (util/report-threshold supply-data demand-data surplus-data include-pollutants?)
+        color (zipmap (keys threshold-report) (map show-color (vals threshold-report)))
+        t2 (assoc t :wcs wcs
+                    :price-data price-data
+                    :surplus-data surplus-data
+                    :supply-data supply-data
+                    :demand-data demand-data
+                    :price-delta-data price-delta-data
+                    :pd-data pd-data
+                    :threshold-report threshold-report
+                    :iteration (inc (:iteration t))
+                    :color color)]
+    t2))
+
 (defn print-csv [args-to-print data]
   (let [all-args (flatten (mapv (partial get data) args-to-print))]
     (clojure.string/join "|" all-args)))
@@ -77,7 +105,37 @@
            :ccs (mapv util/augment-cc (get t :ccs))
            :wcs (mapv util/augment-wc (get t :wcs))))
 
-(defn setup [t _ experiment]
+(defn update-aggregated-demand [value-to-use m]
+  (->> m
+       value-to-use
+       (map (fn [x] (get-in x [:demand])))
+       flatten
+       (reduce +)))
+
+(defn read-stream-ccs [ds resource-path]
+  (with-open [r (-> resource-path io/resource io/reader java.io.PushbackReader.)]
+    (loop [num-of-ccs 1
+           pollutants-demand-sum 0
+           private-goods-demand-sum 0
+           public-goods-demand-sum 0]
+      (let [form (edn/read {:eof ::eof} r)
+            _ (if (not= form ::eof) (jdbc/execute! ds ["insert into ccs (id, cc) values (?, ?)" num-of-ccs form]))]
+        (if (= form ::eof)
+          [num-of-ccs pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum]
+          (recur (inc num-of-ccs)
+                 (+ pollutants-demand-sum (update-aggregated-demand :pollutant-permissions form))
+                 (+ private-goods-demand-sum (update-aggregated-demand :private-goods form))
+                 (+ public-goods-demand-sum (update-aggregated-demand :public-goods form))))))))
+
+(defn read-stream-wcs [resource-path]
+  (with-open [r (-> resource-path io/resource io/reader java.io.PushbackReader.)]
+    (loop [wcs-to-return []]
+      (let [form (edn/read {:eof ::eof} r)]
+        (if (= form ::eof)
+          wcs-to-return
+          (recur (conj wcs-to-return form)))))))
+
+(defn setup-improved [t _ experiment]
   (let [intermediate-inputs (vec (range 1 (inc (t :intermediate-inputs))))
         nature-types (vec (range 1 (inc (t :resources))))
         labor-types (vec (range 1 (inc (t :labors))))
@@ -85,7 +143,12 @@
         public-good-types (vec (range 1 (inc (t :public-goods))))
         pollutant-types (if (:include-pollutants? t)
                           (vec (range 1 (inc (t :pollutants))))
-                          [])]
+                          [])
+        ; _ (jdbc/execute! ds ["create table ccs (id int auto_increment primary key, cc text)"])
+        ; _ (jdbc/execute! ds ["create table wcs (id int auto_increment primary key, wc text)"])
+        ; [num-of-ccs pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum] (read-stream-ccs ds "ppex001-ccs.edn")
+         wcs (read-stream-wcs "ppex001-wcs.edn")
+         ]
     (-> t
         util/initialize-prices
         (assoc :natural-resources-supply (repeat (t :resources) 1000)
@@ -96,29 +159,65 @@
                :labor-types labor-types
                :public-good-types public-good-types
                :pollutant-types pollutant-types
-               :ccs (util/add-ids ppex004/ccs)
-               :wcs (util/add-ids ppex004/wcs)))))
+               :num-of-ccs 30000 ; TEMP hard coded
+               :pollutants-demand-sum  0 ; TEMP
+               :private-goods-demand-sum 0 ; TEMP
+               :public-goods-demand-sum 0 ; TEMP
+;               :ccs (util/add-ids ccs)
+               :wcs (util/add-ids wcs)
+))))
+
+#_(defn setup [t _ experiment]
+  (let [intermediate-inputs (vec (range 1 (inc (t :intermediate-inputs))))
+        nature-types (vec (range 1 (inc (t :resources))))
+        labor-types (vec (range 1 (inc (t :labors))))
+        private-goods (vec (range 1 (inc (t :private-goods))))
+        public-good-types (vec (range 1 (inc (t :public-goods))))
+        pollutant-types (if (:include-pollutants? t)
+                          (vec (range 1 (inc (t :pollutants))))
+                          [])
+        [num-of-ccs pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum ccs] (read-stream-ccs "ppex001-ccs.edn")
+        ; wcs (read-stream "ppex001-wcs.edn")
+        
+]
+    (-> t
+        util/initialize-prices
+        (assoc :natural-resources-supply (repeat (t :resources) 1000)
+               :labor-supply (repeat (t :labors) 1000)
+               :private-goods private-goods
+               :intermediate-inputs intermediate-inputs
+               :nature-types nature-types
+               :labor-types labor-types
+               :public-good-types public-good-types
+               :pollutant-types pollutant-types
+;               :num-of-ccs num-of-ccs
+;               :pollutants-demand-sum pollutants-demand-sum
+;               :private-goods-demand-sum private-goods-demand-sum
+;               :public-goods-demand-sum public-goods-demand-sum
+;               :ccs ccs
+;               :wcs (util/add-ids wcs)
+))))
 
 ; [:iteration :color :price-data :price-delta-data :pd-data :supply-data :demand-data :surplus-data :threshold-report]
 
-(defn -main [& [ns-to-use]]
+(defn -main [& ns-to-use]
   (let [keys-to-print [:iteration :color :threshold-report]]
     (do
-      (swap! globals setup globals ns-to-use)
+      (swap! globals setup-improved globals ns-to-use)
       (println (clojure.string/join "|" keys-to-print))
       (println (print-csv keys-to-print @globals))
       (while (and (or (empty? (flatten (vals (get @globals :threshold-report))))
                       (some #(> % 5) (flatten (vals (get @globals :threshold-report)))))
                   (> 200 (get @globals :iteration)))
         (do
-          (swap! globals iterate-plan globals) 
+          (swap! globals iterate-plan-improved globals) 
           (println (print-csv keys-to-print @globals))))
-      (swap! globals augmented-reset globals)
-      (println "AUGMENTED_RESET")
-      (do
+      #_(swap! globals augmented-reset globals)
+      #_(println "AUGMENTED_RESET")
+      #_(do
         (swap! globals iterate-plan globals)
         (println (print-csv keys-to-print @globals)))
-      (while (and (some #(> % 5) (flatten (vals (get @globals :threshold-report))))
+      #_(while (and (some #(> % 5) (flatten (vals (get @globals :threshold-report))))
                   (> 200 (get @globals :iteration)))
         (do
           (swap! globals iterate-plan globals) 

@@ -1,4 +1,5 @@
-(ns pequod-plus.util)
+(ns pequod-plus.util
+  (:require [next.jdbc :as jdbc]))
 
 (def globals 
   {:init-private-good-price 700
@@ -553,6 +554,65 @@
                         :else (:price price-datum))]
     (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use price-delta-to-use :supply supply :demand demand)))
 
+(defn compute-surpluses-prices-improved [wcs num-of-ccs pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum natural-resources-supply labor-supply price-delta-data type-to-use price-datum]
+  (let [id-to-use (:id price-datum)
+        supply (condp = type-to-use
+                           :private-goods (->> wcs
+                                               (filter #(and (= 0 (get % :industry))
+                                                             (= id-to-use
+                                                                (get % :product))))
+                                               (map :output)
+                                               (reduce +))
+                           :intermediate-inputs (->> wcs
+                                                    (filter #(and (= 1 (get % :industry))
+                                                                  (= id-to-use
+                                                                     (get % :product))))
+                                                    (mapv :output)
+                                                    (reduce +))
+                           :nature (nth natural-resources-supply (dec id-to-use))
+                           :labor  (nth labor-supply (dec id-to-use))
+                           :public-goods (->> wcs
+                                              (filter #(and (= 2 (get % :industry))
+                                                            (= id-to-use
+                                                               (get % :product))))
+                                              (map :output)
+                                              (reduce +)) 
+                           :pollutants (/ pollutants-demand-sum num-of-ccs))
+        demand (condp = type-to-use
+                           :private-goods private-goods-demand-sum
+                           :intermediate-inputs (->> wcs
+                                                     (mapv #(select-keys % [:intermediate-inputs :intermediate-input-quantities]))
+                                                     (filter (fn [x] (contains? (set (mapv :coefficient (:intermediate-inputs x))) id-to-use)))
+                                                     (mapv (partial get-filtered-input-quantities id-to-use))
+                                                     flatten
+                                                     (reduce +)) 
+                           :nature (->> wcs
+                                        (mapv #(select-keys % [:nature :nature-quantities]))
+                                        (filter (fn [x] (contains? (set (mapv :coefficient (:nature x))) id-to-use)))
+                                        (mapv (partial get-filtered-input-quantities id-to-use))
+                                        flatten
+                                        (reduce +))
+                           :labor (->> wcs
+                                        (mapv #(select-keys % [:labor :labor-quantities]))
+                                        (filter (fn [x] (contains? (set (mapv :coefficient (:labor x))) id-to-use)))
+                                        (mapv (partial get-filtered-input-quantities id-to-use))
+                                        flatten
+                                        (reduce +))
+                           :public-goods (/ public-goods-demand-sum num-of-ccs)
+                           :pollutants (->> wcs
+                                            (mapv #(select-keys % [:pollutants :pollutant-quantities]))
+                                            (filter (fn [x] (contains? (set (mapv :coefficient (:pollutants x))) id-to-use)))
+                                            (mapv (partial get-filtered-input-quantities id-to-use))
+                                            flatten
+                                            (reduce +)))
+        surplus (- supply demand)
+        price-delta-to-use (- 1.05 (Math/pow 0.5 (/ (Math/abs (* 2 surplus)) (+ demand supply))))
+        new-delta (force-to-one (get-delta price-delta-to-use (get price-delta-data type-to-use 1)))
+        new-price (cond (pos? surplus) (* (- 1 new-delta) (:price price-datum))
+                        (neg? surplus) (* (+ 1 new-delta) (:price price-datum))
+                        :else (:price price-datum))]
+    (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use price-delta-to-use :supply supply :demand demand)))
+
 (defn compute-percent-surplus [supply-list demand-list surplus-list]
   (let [averaged-s-and-d (->> (interleave (flatten supply-list)
                                           (flatten demand-list))
@@ -572,21 +632,18 @@
                                                                        (get-in surplus-data [cat-to-use]))) categories)]
     (zipmap categories updates-to-use)))
 
-#_(defn update-percent-surplus [supply-list demand-list surplus-list]
-  (let [averaged-s-and-d (->> (interleave (flatten supply-list)
-                                          (flatten demand-list))
-                              (partition 2)
-                              (mapv mean))]
-    (->> (interleave (flatten surplus-list) averaged-s-and-d)
-         (partition 2)
-         (mapv #(/ (first %) (last %)))
-         (mapv force-to-one))))
-
 (defn update-surpluses-prices [wcs ccs natural-resources-supply labor-supply price-data price-delta-data include-pollutants?]
   (let [categories (if include-pollutants?
                      [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
                      [:private-goods :intermediate-inputs :nature :labor :public-goods])
         price-updates (mapv (fn [type-to-use] (mapv (partial compute-surpluses-prices wcs ccs natural-resources-supply labor-supply price-delta-data type-to-use) (get-in price-data [type-to-use]))) categories)]
+     (zipmap categories price-updates)))
+
+(defn update-surpluses-prices-improved [wcs num-of-ccs pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum natural-resources-supply labor-supply price-data price-delta-data include-pollutants?]
+  (let [categories (if include-pollutants?
+                     [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
+                     [:private-goods :intermediate-inputs :nature :labor :public-goods])
+        price-updates (mapv (fn [type-to-use] (mapv (partial compute-surpluses-prices-improved wcs num-of-ccs pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum natural-resources-supply labor-supply price-delta-data type-to-use) (get-in price-data [type-to-use]))) categories)]
      (zipmap categories price-updates)))
 
 (defn compute-threshold [supply-list demand-list surplus-list]
@@ -715,6 +772,40 @@
                 :public-goods updated-public-goods
                 :income income))))
 
+(defn process-batch [tx rows include-pollutants? private-goods public-goods pollutants num-of-ccs price-data]
+  (let [updates
+        (mapv (fn [e]
+                (let [cc-map (clojure.edn/read-string (get-in e [:ccs/cc]))
+                      id (get-in e [:ccs/id])
+                      _ (println "process-batch/id: " id)
+                      updated (consume include-pollutants? private-goods public-goods pollutants num-of-ccs price-data cc-map)]
+                  [(pr-str updated) id]))
+              rows)]
+    (jdbc/execute-batch!
+      tx
+      "update ccs set cc = ? where id = ?"
+      updates)))
+
+(defn consume-improved [ds include-pollutants? private-goods public-goods pollutants num-of-ccs price-data]
+  (jdbc/with-transaction [tx ds]
+    (loop [offset 0
+           batch-size 10]
+      (let [rows (jdbc/execute! tx ["select id, cc from ccs limit ? offset ?" batch-size offset])]
+        (when (seq rows)
+          (process-batch tx rows include-pollutants? private-goods public-goods pollutants num-of-ccs price-data)
+          (recur (+ offset batch-size) batch-size))))))
+
+(defn consume-improved-prototype [include-pollutants? private-goods public-goods pollutants num-of-ccs price-data]
+  (let [ds (jdbc/get-datasource {:dbtype "sqlite" :dbname "pequod.db"})]
+    (dotimes [i-to-use num-of-ccs]
+      (let [i (inc i-to-use)
+            cc (->> ["select * from ccs where id = ?" i]
+                    (jdbc/execute-one! ds)
+                    second
+                    second
+                    read-string)]
+        (if (zero? (mod i 1000)) (println (str "consume-improved cc: " i " =>" cc)))))))
+
 (defn get-pricing-data [price-data pricing-cat include-pollutants?]
   (let [categories (if include-pollutants?
                      [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
@@ -733,31 +824,6 @@
                      [:private-goods :intermediate-inputs :nature :labor :public-goods])
         data-to-get (mapv (fn [type-to-use] (calculate-price-deltas (get-in supply-data [type-to-use]) (get-in demand-data [type-to-use]) (get-in surplus-data [type-to-use]))) categories)]
     (zipmap categories data-to-get)))
-
-#_(defn iterate-plan [t]
-  (let [wcs (mapv (partial proposal (:price-data t)) (:wcs t))
-        ccs (mapv (partial consume (t :private-goods) (t :public-good-types) (t :pollutant-types) (count (t :ccs)) (get-in t [:price-data])) (t :ccs))
-        price-data (update-surpluses-prices wcs ccs (:price-data t))
-        surplus-data (get-pricing-data price-data :surplus)
-        supply-data (get-pricing-data price-data :supply)
-        demand-data (get-pricing-data price-data :demand)
-        price-deltas (get-pricing-data price-data :price-delta-to-use)
-        pd-list (get-pricing-data price-data :pd)
-        percent-surplus (update-percent-surplus supply-data demand-data surplus-data)
-        threshold-report (report-threshold supply-data demand-data surplus-data)
-        t2 (assoc t :wcs wcs
-                    :ccs ccs
-                    :price-data price-data
-                    :surplus-data surplus-data
-                    :supply-data supply-data
-                    :demand-data demand-data
-                    :price-delta-data price-deltas
-                    :pd-data pd-list
-                    :percent-surplus percent-surplus
-                    :threshold-report threshold-report
-                    :iteration (inc (:iteration t)))]
-    t2))
-; ---
 
 (defn individual-augment [set-to-use]
   (mapv (fn [e] (assoc e :exponent (+ (get e :augment) (get e :exponent)))) set-to-use))
