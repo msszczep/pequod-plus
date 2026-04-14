@@ -127,6 +127,28 @@
                  (+ private-goods-demand-sum (update-aggregated-demand :private-goods form))
                  (+ public-goods-demand-sum (update-aggregated-demand :public-goods form))))))))
 
+(defn read-stream-ccs-to-normalized-db [ds resource-path]
+  (with-open [r (-> resource-path io/resource io/reader java.io.PushbackReader.)]
+    (loop [num-of-ccs 1]
+      (let [form (edn/read {:eof ::eof} r)
+            cohort-region (get-in form [:cohort :region])
+            income (get-in form [:income])
+            _ (if (zero? (mod num-of-ccs 1000)) (println "ccs: " num-of-ccs))
+            positive-utility-from-income (get-in form [:pollutant-utilities :positive-utility-from-income])
+            negative-utility-from-exposure (get-in form [:pollutant-utilities :negative-utility-from-exposure])
+            private-goods (get-in form [:private-goods])
+            public-goods (get-in form [:public-goods])
+            _ (if (not= form ::eof)
+                (do
+                  (jdbc/execute! ds ["insert into ccs (id, cohort_region, income, positive_utility_from_income, negative_utility_from_exposure) values (?, ?, ?, ?, ?);" num-of-ccs cohort-region income positive-utility-from-income negative-utility-from-exposure])
+                  (doseq [e private-goods]
+                     (jdbc/execute! ds ["insert into private_goods (cc_id, good_id, exponent, augment, demand) values (?, ?, ?, ?, ?);" num-of-ccs (get e :id) (get e :exponent) (get e :augment) (get e :demand)]))
+                  (doseq [e public-goods]
+                     (jdbc/execute! ds ["insert into public_goods (cc_id, good_id, exponent, augment, demand) values (?, ?, ?, ?, ?);" num-of-ccs (get e :id) (get e :exponent) (get e :augment) (get e :demand)]))))]
+        (if (= form ::eof)
+          num-of-ccs
+          (recur (inc num-of-ccs)))))))
+
 (defn read-stream-wcs [resource-path]
   (with-open [r (-> resource-path io/resource io/reader java.io.PushbackReader.)]
     (loop [wcs-to-return []]
@@ -134,6 +156,48 @@
         (if (= form ::eof)
           wcs-to-return
           (recur (conj wcs-to-return form)))))))
+
+(defn create-normalized-ccs-tables [ds]
+  (let [ccs-table "CREATE TABLE ccs (
+                     id INTEGER PRIMARY KEY,
+                     cohort_region INTEGER,
+                     income REAL,
+                     positive_utility_from_income REAL,
+                     negative_utility_from_exposure REAL
+                   );"
+        private-goods-table "CREATE TABLE private_goods (
+                               cc_id INTEGER,
+                               good_id INTEGER,
+                               exponent REAL,
+                               augment REAL,
+                               demand REAL,
+                               PRIMARY KEY (cc_id, good_id)
+                             );"
+        public-goods-table "CREATE TABLE public_goods (
+                              cc_id INTEGER,
+                              good_id INTEGER,
+                              exponent REAL,
+                              augment REAL,
+                              demand REAL,
+                              PRIMARY KEY (cc_id, good_id)
+                             );"
+        pollutant-permissions-table "CREATE TABLE pollutant_permissions (
+                                     cc_id INTEGER,
+                                     pollutant_id INTEGER,
+                                     exponent REAL,
+                                     augment REAL,
+                                     demand REAL
+                                    );"
+         private-goods-index "CREATE INDEX idx_private_cc ON private_goods(cc_id);"
+         public-goods-index "CREATE INDEX idx_public_cc ON public_goods(cc_id);"
+        ]
+    (do
+      (jdbc/execute! ds [ccs-table])
+      (jdbc/execute! ds [private-goods-table])
+      (jdbc/execute! ds [public-goods-table])
+      (jdbc/execute! ds [pollutant-permissions-table])
+      (jdbc/execute! ds [private-goods-index])
+      (jdbc/execute! ds [public-goods-index]))))
 
 (defn setup-improved [t _ experiment]
   (let [intermediate-inputs (vec (range 1 (inc (t :intermediate-inputs))))
@@ -144,11 +208,11 @@
         pollutant-types (if (:include-pollutants? t)
                           (vec (range 1 (inc (t :pollutants))))
                           [])
-        ; _ (jdbc/execute! ds ["create table ccs (id int auto_increment primary key, cc text)"])
-        ; _ (jdbc/execute! ds ["create table wcs (id int auto_increment primary key, wc text)"])
+        ds (t :ds)
+        _ (create-normalized-ccs-tables ds)
+        num-of-ccs (read-stream-ccs-to-normalized-db ds "ppex001-ccs.edn")
         ; [num-of-ccs pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum] (read-stream-ccs ds "ppex001-ccs.edn")
-         wcs (read-stream-wcs "ppex001-wcs.edn")
-         ]
+         wcs (read-stream-wcs "ppex001-wcs.edn")]
     (-> t
         util/initialize-prices
         (assoc :natural-resources-supply (repeat (t :resources) 1000)
@@ -166,6 +230,8 @@
 ;               :ccs (util/add-ids ccs)
                :wcs (util/add-ids wcs)
 ))))
+
+
 
 #_(defn setup [t _ experiment]
   (let [intermediate-inputs (vec (range 1 (inc (t :intermediate-inputs))))
@@ -204,9 +270,9 @@
   (let [keys-to-print [:iteration :color :threshold-report]]
     (do
       (swap! globals setup-improved globals ns-to-use)
-      (println (clojure.string/join "|" keys-to-print))
-      (println (print-csv keys-to-print @globals))
-      (while (and (or (empty? (flatten (vals (get @globals :threshold-report))))
+      #_(println (clojure.string/join "|" keys-to-print))
+      #_(println (print-csv keys-to-print @globals))
+      #_(while (and (or (empty? (flatten (vals (get @globals :threshold-report))))
                       (some #(> % 5) (flatten (vals (get @globals :threshold-report)))))
                   (> 200 (get @globals :iteration)))
         (do
