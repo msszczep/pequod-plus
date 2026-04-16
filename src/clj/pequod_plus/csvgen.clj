@@ -75,7 +75,7 @@
   (let [include-pollutants? (:include-pollutants? t)
         ds (:ds t)
         wcs (mapv (partial util/proposal include-pollutants? (:price-data t)) (:wcs t))
-        _ (util/consume-improved ds include-pollutants? (t :private-goods) (t :public-good-types) (t :pollutant-types) (t :num-of-ccs) (get-in t [:price-data]))
+        _ (util/consume-from-db ds include-pollutants? (t :private-goods) (t :public-good-types) (t :pollutant-types) (t :num-of-ccs) (get-in t [:price-data]))
         price-data (util/update-surpluses-prices-improved wcs (:num-of-ccs t) (:pollutants-demand-sum t) (:private-goods-demand-sum t) (:public-goods-demand-sum t) (:natural-resources-supply t) (:labor-supply t) (:price-data t) (:price-delta-data t) include-pollutants?)
         surplus-data (util/get-pricing-data price-data :surplus include-pollutants?)
         supply-data (util/get-pricing-data price-data :supply include-pollutants?)
@@ -133,7 +133,7 @@
       (let [form (edn/read {:eof ::eof} r)
             cohort-region (get-in form [:cohort :region])
             income (get-in form [:income])
-            _ (if (zero? (mod num-of-ccs 1000)) (println "ccs: " num-of-ccs))
+            ; _ (if (zero? (mod num-of-ccs 1000)) (println "ccs: " num-of-ccs))
             positive-utility-from-income (get-in form [:pollutant-utilities :positive-utility-from-income])
             negative-utility-from-exposure (get-in form [:pollutant-utilities :negative-utility-from-exposure])
             private-goods (get-in form [:private-goods])
@@ -223,7 +223,7 @@
                :labor-types labor-types
                :public-good-types public-good-types
                :pollutant-types pollutant-types
-               :num-of-ccs 30000 ; TEMP hard coded
+               :num-of-ccs num-of-ccs
                :pollutants-demand-sum  0 ; TEMP
                :private-goods-demand-sum 0 ; TEMP
                :public-goods-demand-sum 0 ; TEMP
