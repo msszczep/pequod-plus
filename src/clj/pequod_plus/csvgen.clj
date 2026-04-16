@@ -138,13 +138,17 @@
             negative-utility-from-exposure (get-in form [:pollutant-utilities :negative-utility-from-exposure])
             private-goods (get-in form [:private-goods])
             public-goods (get-in form [:public-goods])
+            pollutant-permissions (get-in form [:pollutant-permissions])
             _ (if (not= form ::eof)
                 (do
                   (jdbc/execute! ds ["insert into ccs (id, cohort_region, income, positive_utility_from_income, negative_utility_from_exposure) values (?, ?, ?, ?, ?);" num-of-ccs cohort-region income positive-utility-from-income negative-utility-from-exposure])
                   (doseq [e private-goods]
                      (jdbc/execute! ds ["insert into private_goods (cc_id, good_id, exponent, augment, demand) values (?, ?, ?, ?, ?);" num-of-ccs (get e :id) (get e :exponent) (get e :augment) (get e :demand)]))
                   (doseq [e public-goods]
-                     (jdbc/execute! ds ["insert into public_goods (cc_id, good_id, exponent, augment, demand) values (?, ?, ?, ?, ?);" num-of-ccs (get e :id) (get e :exponent) (get e :augment) (get e :demand)]))))]
+                     (jdbc/execute! ds ["insert into public_goods (cc_id, good_id, exponent, augment, demand) values (?, ?, ?, ?, ?);" num-of-ccs (get e :id) (get e :exponent) (get e :augment) (get e :demand)]))
+                  (doseq [e pollutant-permissions]
+                     (jdbc/execute! ds ["insert into pollutant_permissions (cc_id, pollutant_id, exponent, augment, demand) values (?, ?, ?, ?, ?);" num-of-ccs (get e :id) (get e :exponent) (get e :augment) (get e :demand)]))
+))]
         (if (= form ::eof)
           num-of-ccs
           (recur (inc num-of-ccs)))))))
@@ -212,7 +216,7 @@
         _ (create-normalized-ccs-tables ds)
         num-of-ccs (read-stream-ccs-to-normalized-db ds "ppex001-ccs.edn")
         ; [num-of-ccs pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum] (read-stream-ccs ds "ppex001-ccs.edn")
-         wcs (read-stream-wcs "ppex001-wcs.edn")]
+        wcs (read-stream-wcs "ppex001-wcs.edn")]
     (-> t
         util/initialize-prices
         (assoc :natural-resources-supply (repeat (t :resources) 1000)

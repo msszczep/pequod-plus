@@ -773,7 +773,7 @@
                 :public-goods updated-public-goods
                 :income income))))
 
-(defn consume-from-db [include-pollutants? private-goods public-goods pollutants num-of-ccs price-data]
+(defn consume-from-db [ds include-pollutants? private-goods public-goods pollutants num-of-ccs price-data]
   (let [builder-fn-map {:builder-fn result-set/as-unqualified-lower-maps}
         ccs (jdbc/execute! ds ["select id, income, positive_utility_from_income, negative_utility_from_exposure from ccs"] builder-fn-map)
         private-good-prices (:private-goods price-data)
@@ -781,40 +781,41 @@
         pollutant-prices (if include-pollutants? (:pollutants price-data) [])]
     (doseq [cc ccs]
       (let [cc-id (:id cc)
+            income (:income cc)
             private-good-exponents-sum (->> builder-fn-map
                                             (jdbc/execute-one! ds ["select sum(exponent) as sum_exponent from private_goods where cc_id = " cc-id])
                                             :sum_exponent)
-            public-goods-exponents-sum (->> builder-fn-map
+            public-good-exponents-sum (->> builder-fn-map
                                             (jdbc/execute-one! ds ["select sum(exponent) as sum_exponent from public_goods where cc_id = " cc-id])
                                             :sum_exponent)
             pollutant-positive-utility-from-income (get-in cc [:positive_utility_from_income])
             pollutant-negative-utility-from-exposure (get-in cc [:negative_utility_from_exposure])]
        (do
-         (mapv (fn [private-good]
-                 (let [private-good-price (->> private-good-prices
+         (map (fn [private-good] ; TODO: Change to doseq?
+                (let [private-good-price (->> private-good-prices
                                                (filter #(= private-good (:id %)))
                                                first
                                                :price)
-                        private-good-exponent (:exponent (jdbc/execute-one! ds ["select exponent from private_goods where cc_id = ? and good_id = ?" cc-id private-good] {:builder-fn rs/as-unqualified-lower-maps}))
+                        private-good-exponent (:exponent (jdbc/execute-one! ds ["select exponent from private_goods where cc_id = ? and good_id = ?" cc-id private-good] builder-fn-map))
                         updated-demand (/ (* income private-good-exponent)
                                           (* (apply + private-good-exponents-sum public-good-exponents-sum)
                                              private-good-price))]
-                    (jdbc-execute-one! ds ["update private_goods set demand = ? where cc_id = ? and good_id = ?" updated-date cc-id private-good])))
+                    (jdbc/execute-one! ds ["update private_goods set demand = ? where cc_id = ? and good_id = ?" updated-demand cc-id private-good])))
                private-goods)
-         (mapv (fn [public-good]
+         (map (fn [public-good]
                  (let [public-good-price (->> public-good-prices
                                               (filter #(= public-good (:id %)))
                                               first
                                               :price)
-                        public-good-exponent (:exponent (jdbc/execute-one! ds ["select exponent from public_goods where cc_id = ? and good_id = ?" cc-id public-good] {:builder-fn rs/as-unqualified-lower-maps}))
+                        public-good-exponent (:exponent (jdbc/execute-one! ds ["select exponent from public_goods where cc_id = ? and good_id = ?" cc-id public-good] builder-fn-map))
                         updated-demand (/ (* income public-good-exponent)
                                           (* (apply + private-good-exponents-sum public-good-exponents-sum)
                                              public-good-price))]
-                    (jdbc-execute-one! ds ["update public_goods set demand = ? where cc_id = ? and good_id = ?" updated-date cc-id public-good])))
+                    (jdbc/execute-one! ds ["update public_goods set demand = ? where cc_id = ? and good_id = ?" updated-demand cc-id public-good])))
                public-goods)
          (if include-pollutants?
            (do
-             (mapv (fn [pollutant]
+             (map (fn [pollutant]
                      (let [p (->> pollutant-prices
                                   (filter #(= pollutant (:id %)))
                                   first
@@ -823,12 +824,13 @@
                            j pollutant-positive-utility-from-income
                            pollutant-permission (* (Math/pow 5 (/ 1 (- k j)))
                                                    (Math/pow (/ (* j (Math/pow p j)) k) (/ 1 (- k j))))]
-                       (jdbc-execute-one! ds ["update public_goods set demand = ? where cc_id = ? and good_id = ?" pollutant-permission cc-id public-good])))
+                       (jdbc/execute-one! ds ["update public_goods set demand = ? where cc_id = ? and good_id = ?" pollutant-permission cc-id pollutant])))
                    pollutants)
              (let [updated-income (->> builder-fn-map
                                        (jdbc/execute-one! ds ["select sum(demand) as sum_demand from pollutant_permissions where cc_id = " cc-id])
-                                       :sum_exponent)]
-               (jdbc-execute-one! ds ["update cc set income = ? where cc_id = ? and good_id = ?" (+ (:income cc) pollutant-permission) cc-id public-good])))))))))
+                                       :sum_demand)]
+               (map (fn [pollutant]
+                      (jdbc/execute-one! ds ["update cc set income = ? where cc_id = ? and good_id = ?" (+ income updated-income) cc-id pollutant])))))))))))
 
 (defn process-batch [tx rows include-pollutants? private-goods public-goods pollutants num-of-ccs price-data]
   (let [updates
