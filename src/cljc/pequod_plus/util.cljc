@@ -781,12 +781,13 @@
         pollutant-prices (if include-pollutants? (:pollutants price-data) [])]
     (doseq [cc ccs]
       (let [cc-id (:id cc)
+            _ (if (zero? (mod cc-id 25)) (println "cc-id: " cc-id))
             income (:income cc)
             private-good-exponents-sum (->> builder-fn-map
-                                            (jdbc/execute-one! ds ["select sum(exponent) as sum_exponent from private_goods where cc_id = " cc-id])
+                                            (jdbc/execute-one! ds ["select sum(exponent) as sum_exponent from private_goods where cc_id = ?" cc-id])
                                             :sum_exponent)
             public-good-exponents-sum (->> builder-fn-map
-                                            (jdbc/execute-one! ds ["select sum(exponent) as sum_exponent from public_goods where cc_id = " cc-id])
+                                            (jdbc/execute-one! ds ["select sum(exponent) as sum_exponent from public_goods where cc_id = ?" cc-id])
                                             :sum_exponent)
             pollutant-positive-utility-from-income (get-in cc [:positive_utility_from_income])
             pollutant-negative-utility-from-exposure (get-in cc [:negative_utility_from_exposure])]
@@ -798,7 +799,7 @@
                                          :price)
                  private-good-exponent (:exponent (jdbc/execute-one! ds ["select exponent from private_goods where cc_id = ? and good_id = ?" cc-id private-good] builder-fn-map))
                  updated-demand (/ (* income private-good-exponent)
-                                   (* (apply + private-good-exponents-sum public-good-exponents-sum)
+                                   (* (+ private-good-exponents-sum public-good-exponents-sum)
                                       private-good-price))]
              (jdbc/execute-one! ds ["update private_goods set demand = ? where cc_id = ? and good_id = ?" updated-demand cc-id private-good])))
          (doseq [public-good public-goods]
@@ -808,7 +809,7 @@
                                            :price)
                     public-good-exponent (:exponent (jdbc/execute-one! ds ["select exponent from public_goods where cc_id = ? and good_id = ?" cc-id public-good] builder-fn-map))
                     updated-demand (/ (* income public-good-exponent)
-                                      (* (apply + private-good-exponents-sum public-good-exponents-sum)
+                                      (* (+ private-good-exponents-sum public-good-exponents-sum)
                                          public-good-price))]
                 (jdbc/execute-one! ds ["update public_goods set demand = ? where cc_id = ? and good_id = ?" updated-demand cc-id public-good])))
          (if include-pollutants?
@@ -822,12 +823,11 @@
                         j pollutant-positive-utility-from-income
                         pollutant-permission (* (Math/pow 5 (/ 1 (- k j)))
                                                 (Math/pow (/ (* j (Math/pow p j)) k) (/ 1 (- k j))))]
-                    (jdbc/execute-one! ds ["update public_goods set demand = ? where cc_id = ? and good_id = ?" pollutant-permission cc-id pollutant])))
+                    (jdbc/execute-one! ds ["update pollutant_permissions set demand = ? where cc_id = ? and good_id = ?" pollutant-permission cc-id pollutant])))
              (let [updated-income (->> builder-fn-map
-                                       (jdbc/execute-one! ds ["select sum(demand) as sum_demand from pollutant_permissions where cc_id = " cc-id])
+                                       (jdbc/execute-one! ds ["select sum(demand) as sum_demand from pollutant_permissions where cc_id = ?" cc-id])
                                        :sum_demand)]
-               (doseq [pollutant pollutants]
-                    (jdbc/execute-one! ds ["update cc set income = ? where cc_id = ? and good_id = ?" (+ income updated-income) cc-id pollutant]))))))))))
+               (jdbc/execute-one! ds ["update ccs set income = ? where id = ?" (+ income updated-income) cc-id])))))))))
 
 (defn process-batch [tx rows include-pollutants? private-goods public-goods pollutants num-of-ccs price-data]
   (let [updates
@@ -842,6 +842,63 @@
       tx
       "update ccs set cc = ? where id = ?"
       updates)))
+
+; TODO - Create tables for prices, populate the tables.
+
+(defn consume-process-all-in-db [ds include-pollutants?]
+  (jdbc/with-transaction [tx ds]
+    (jdbc/execute! tx ["CREATE TEMP TABLE exponent_sums AS
+      SELECT
+        c.id AS cc_id,
+        COALESCE(pg_sum.sum_exp, 0) AS private_sum,
+        COALESCE(pub_sum.sum_exp, 0) AS public_sum,
+        COALESCE(pg_sum.sum_exp, 0) + COALESCE(pub_sum.sum_exp, 0) AS total_sum
+      FROM ccs c
+      LEFT JOIN (
+        SELECT cc_id, SUM(exponent) AS sum_exp
+        FROM private_goods GROUP BY cc_id
+      ) pg_sum ON pg_sum.cc_id = c.id
+      LEFT JOIN (
+        SELECT cc_id, SUM(exponent) AS sum_exp
+        FROM public_goods GROUP BY cc_id
+      ) pub_sum ON pub_sum.cc_id = c.id"])
+    (jdbc/execute! tx ["UPDATE private_goods SET demand = (
+        (SELECT income FROM ccs WHERE id = private_goods.cc_id)
+        * exponent
+      ) / (
+        (SELECT total_sum FROM exponent_sums WHERE cc_id = private_goods.cc_id)
+        * (SELECT price FROM private_good_prices WHERE good_id = private_goods.good_id)
+      )"])
+    (jdbc/execute! tx ["UPDATE public_goods SET demand = (
+        (SELECT income FROM ccs WHERE id = public_goods.cc_id)
+        * exponent
+      ) / (
+        (SELECT total_sum FROM exponent_sums WHERE cc_id = public_goods.cc_id)
+        * (SELECT price FROM public_good_prices WHERE good_id = public_goods.good_id)
+      )"])
+    (when include-pollutants?
+      (jdbc/execute! tx ["UPDATE pollutant_permissions
+        SET demand =
+          POW(5, 1.0 / (ccs.negative_utility_from_exposure - ccs.positive_utility_from_income))
+          *
+          POW(
+            (
+              ccs.positive_utility_from_income *
+              POW(pollutant_prices.price, ccs.positive_utility_from_income)
+            ) / ccs.negative_utility_from_exposure,
+            1.0 / (ccs.negative_utility_from_exposure - ccs.positive_utility_from_income)
+          )
+        FROM ccs
+        JOIN pollutant_prices
+          ON pollutant_prices.good_id = pollutant_permissions.good_id
+        WHERE pollutant_permissions.cc_id = ccs.id"])
+      (jdbc/execute! tx ["UPDATE ccs
+        SET income = income + (
+          SELECT COALESCE(SUM(demand), 0)
+          FROM pollutant_permissions
+          WHERE pollutant_permissions.cc_id = ccs.id
+        )"]))
+    (jdbc/execute! tx ["DROP TABLE exponent_sums"])))
 
 (defn consume-improved [ds include-pollutants? private-goods public-goods pollutants num-of-ccs price-data]
   (jdbc/with-transaction [tx ds]
