@@ -47,6 +47,29 @@
                         :public-goods (make-price-maps (t :init-public-good-price) num-public-goods price-delta-to-use pd-to-use)
                         :pollutants (make-price-maps (t :init-pollutant-price) num-pollutants price-delta-to-use pd-to-use)})))
 
+(defn initialize-prices-db [t]
+  (let [num-private-goods (t :private-goods)
+        num-im-inputs (t :intermediate-inputs)
+        num-resources (t :resources)
+        num-labor (t :labors)
+        num-public-goods (t :public-goods)
+        num-pollutants (t :pollutants)
+        price-delta-to-use 0.05
+        pd-to-use 0.25
+        ds (t :ds)]
+    (do
+      #_(doseq [n (range 1 (inc num-private-goods))]
+         (jdbc/execute! ds ["INSERT into private_good_prices (id, price, price_delta, pd) values (?, ?, ?, ?);" n (t :init-private-good-price) price-delta-to-use pd-to-use]))
+      #_(doseq [n (range 1 (inc num-public-goods))]
+         (jdbc/execute! ds ["INSERT into public_good_prices (id, price, price_delta, pd) values (?, ?, ?, ?);" n (t :init-public-good-price) price-delta-to-use pd-to-use]))
+      #_(doseq [n (range 1 (inc num-pollutants))]
+         (jdbc/execute! ds ["INSERT into pollutant_prices (id, price, price_delta, pd) values (?, ?, ?, ?);" n (t :init-pollutant-price) price-delta-to-use pd-to-use]))
+      (assoc t
+             :price-data {:intermediate-inputs (make-price-maps (t :init-intermediate-price) num-im-inputs price-delta-to-use pd-to-use)
+                          :nature (make-price-maps (t :init-nature-price) num-resources price-delta-to-use pd-to-use)
+                          :labor (make-price-maps (t :init-labor-price) num-labor price-delta-to-use pd-to-use)
+                          }))))
+
 (defn add-ids [cs]
   (loop [i 1
          cs cs
@@ -189,6 +212,7 @@
 (defn solution-5 [a s c k ps b λ p-i include-pollutants?]
   (let [[b1 b2 b3 b4 b5] (flatten b)
         [p1 p2 p3 p4 p5] (flatten ps)
+        _ (println "solution-5/ps: " ps)
         log-a (Math/log a)
         log-b1 (Math/log b1)
         log-b2 (Math/log b2)
@@ -555,7 +579,7 @@
                         :else (:price price-datum))]
     (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use price-delta-to-use :supply supply :demand demand)))
 
-(defn compute-surpluses-prices-improved [wcs num-of-ccs pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum natural-resources-supply labor-supply price-delta-data type-to-use price-datum]
+(defn compute-surpluses-prices-improved [ds wcs num-of-ccs pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum natural-resources-supply labor-supply price-delta-data type-to-use price-datum]
   (let [id-to-use (:id price-datum)
         supply (condp = type-to-use
                            :private-goods (->> wcs
@@ -612,7 +636,11 @@
         new-price (cond (pos? surplus) (* (- 1 new-delta) (:price price-datum))
                         (neg? surplus) (* (+ 1 new-delta) (:price price-datum))
                         :else (:price price-datum))]
-    (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use price-delta-to-use :supply supply :demand demand)))
+    (case type-to-use
+      :private-goods (jdbc/execute! ds ["UPDATE private_good_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" new-delta new-price price-delta-to-use supply demand surplus id-to-use])
+      :public-goods (jdbc/execute! ds ["UPDATE public_good_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" new-delta new-price price-delta-to-use supply demand surplus id-to-use])
+      :pollutants (jdbc/execute! ds ["UPDATE pollutant_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" new-delta new-price price-delta-to-use supply demand surplus id-to-use])
+      (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use price-delta-to-use :supply supply :demand demand))))
 
 (defn compute-percent-surplus [supply-list demand-list surplus-list]
   (let [averaged-s-and-d (->> (interleave (flatten supply-list)
@@ -661,7 +689,7 @@
                                                                  (get-in surplus-data [cat-to-use]))) categories)]
     (zipmap categories updates-to-use)))
 
-(defn proposal [include-pollutants? prices wc]
+(defn proposal [ds include-pollutants? prices wc]
   (letfn [(map-wc-values [w k]
             (let [cats-to-use (if include-pollutants?
                                 [:intermediate-inputs :nature :labor :pollutants]
@@ -701,11 +729,17 @@
           disutility-of-effort-coefficient (get-in wc [:disutility-of-effort :coefficient])
           disutility-of-effort-exponent (get-in wc [:disutility-of-effort :exponent])
           p-i (map-wc-values wc :coefficient)
+          ; TODO: Fix pollutant-prices-to-use to scale up with an IN or ANY statement
+          pollutant-prices-to-use (->> {:builder-fn result-set/as-unqualified-lower-maps}
+                                       (jdbc/execute! ds ["select price from pollutant_prices where id = 1"])
+                                       first
+                                       :price)
+          _ (println "pollutant-prices-to-use: " pollutant-prices-to-use)
           ps (if include-pollutants?
                [(mapv (partial get-product-category-price prices :intermediate-inputs) (first p-i))
                 (mapv (partial get-product-category-price prices :nature) (second p-i))
                 (mapv (partial get-product-category-price prices :labor) (nth p-i 2))
-                (mapv (partial get-product-category-price prices :pollutants) (last p-i))]
+                [pollutant-prices-to-use]]
                [(mapv (partial get-product-category-price prices :intermediate-inputs) (first p-i))
                 (mapv (partial get-product-category-price prices :nature) (second p-i))
                 (mapv (partial get-product-category-price prices :labor) (nth p-i 2))])

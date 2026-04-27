@@ -80,7 +80,7 @@
 (defn iterate-plan-improved [t _]
   (let [include-pollutants? (:include-pollutants? t)
         ds (:ds t)
-        wcs (mapv (partial util/proposal include-pollutants? (:price-data t)) (:wcs t))
+        wcs (mapv (partial util/proposal ds include-pollutants? (:price-data t)) (:wcs t))
         _ (println "wcs loaded")
         _ (util/consume-from-db ds include-pollutants? (t :private-goods) (t :public-good-types) (t :pollutant-types) (t :num-of-ccs) (get-in t [:price-data]))
         _ (println "consume-from-db complete")
@@ -153,13 +153,13 @@
             pollutant-permissions (get-in form [:pollutant-permissions])
             _ (if (not= form ::eof)
                 (do
-                  (jdbc/execute! ds ["insert into ccs (id, cohort_region, income, positive_utility_from_income, negative_utility_from_exposure) values (?, ?, ?, ?, ?);" num-of-ccs cohort-region income positive-utility-from-income negative-utility-from-exposure])
+                  (jdbc/execute! ds ["INSERT into ccs (id, cohort_region, income, positive_utility_from_income, negative_utility_from_exposure) values (?, ?, ?, ?, ?);" num-of-ccs cohort-region income positive-utility-from-income negative-utility-from-exposure])
                   (doseq [e private-goods]
-                     (jdbc/execute! ds ["insert into private_goods (cc_id, good_id, exponent, augment, demand) values (?, ?, ?, ?, ?);" num-of-ccs (get e :id) (get e :exponent) (get e :augment) (get e :demand)]))
+                     (jdbc/execute! ds ["INSERT into private_goods (cc_id, good_id, exponent, augment, demand) values (?, ?, ?, ?, ?);" num-of-ccs (get e :id) (get e :exponent) (get e :augment) (get e :demand)]))
                   (doseq [e public-goods]
-                     (jdbc/execute! ds ["insert into public_goods (cc_id, good_id, exponent, augment, demand) values (?, ?, ?, ?, ?);" num-of-ccs (get e :id) (get e :exponent) (get e :augment) (get e :demand)]))
+                     (jdbc/execute! ds ["INSERT into public_goods (cc_id, good_id, exponent, augment, demand) values (?, ?, ?, ?, ?);" num-of-ccs (get e :id) (get e :exponent) (get e :augment) (get e :demand)]))
                   (doseq [e pollutant-permissions]
-                     (jdbc/execute! ds ["insert into pollutant_permissions (cc_id, pollutant_id, exponent, augment, demand) values (?, ?, ?, ?, ?);" num-of-ccs (get e :id) (get e :exponent) (get e :augment) (get e :demand)]))
+                     (jdbc/execute! ds ["INSERT into pollutant_permissions (cc_id, pollutant_id, exponent, augment, demand) values (?, ?, ?, ?, ?);" num-of-ccs (get e :id) (get e :exponent) (get e :augment) (get e :demand)]))
 ))]
         (if (= form ::eof)
           num-of-ccs
@@ -204,6 +204,39 @@
                                      augment REAL,
                                      demand REAL
                                     );"
+        private-good-prices-table "CREATE TABLE private_good_prices (
+                                     id INTEGER,
+                                     price REAL,
+                                     price_delta REAL,
+                                     price_delta_to_use REAL,
+                                     pd REAL,
+                                     supply REAL,
+                                     demand REAL,
+                                     surplus REAL
+                                    );"
+        public-good-prices-table "CREATE TABLE public_good_prices (
+                                     id INTEGER,
+                                     price REAL,
+                                     price_delta REAL,
+                                     price_delta_to_use REAL,
+                                     pd REAL,
+                                     supply REAL,
+                                     demand REAL,
+                                     surplus REAL
+                                    );"
+        pollutant-prices-table "CREATE TABLE pollutant_prices (
+                                     id INTEGER,
+                                     price REAL,
+                                     price_delta REAL,
+                                     price_delta_to_use REAL,
+                                     pd REAL,
+                                     supply REAL,
+                                     demand REAL,
+                                     surplus REAL
+                                    );"
+         private-good-prices-index "CREATE INDEX idx_private_good_prices ON private_good_prices(id)"
+         public-good-prices-index "CREATE INDEX idx_public_good_prices ON public_good_prices(id)"
+         pollutant-prices-index "CREATE INDEX idx_pollutant_prices ON pollutant_prices(id)"
          private-goods-index "CREATE INDEX idx_private_cc ON private_goods(cc_id);"
          public-goods-index "CREATE INDEX idx_public_cc ON public_goods(cc_id);"
         ]
@@ -212,8 +245,14 @@
       (jdbc/execute! ds [private-goods-table])
       (jdbc/execute! ds [public-goods-table])
       (jdbc/execute! ds [pollutant-permissions-table])
-      (jdbc/execute! ds [private-goods-index])
-      (jdbc/execute! ds [public-goods-index]))))
+      (jdbc/execute! ds [private-good-prices-table])
+      (jdbc/execute! ds [public-good-prices-table])
+      (jdbc/execute! ds [pollutant-prices-table])
+      (jdbc/execute! ds [private-good-prices-index])
+      (jdbc/execute! ds [public-good-prices-index])
+      (jdbc/execute! ds [pollutant-prices-index])
+      (jdbc/execute! ds [public-goods-index])
+)))
 
 (defn setup-improved [t _ experiment]
   (let [intermediate-inputs (vec (range 1 (inc (t :intermediate-inputs))))
@@ -230,7 +269,7 @@
         ; [num-of-ccs pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum] (read-stream-ccs ds "ppex001-ccs.edn")
         wcs (read-stream-wcs "ppex001-wcs.edn")]
     (-> t
-        util/initialize-prices
+        util/initialize-prices-db
         (assoc :natural-resources-supply (repeat (t :resources) 1000)
                :labor-supply (repeat (t :labors) 1000)
                :private-goods private-goods
@@ -287,17 +326,17 @@
                       (some #(> % 5) (flatten (vals (get @globals :threshold-report)))))
                   (> 200 (get @globals :iteration)))
         (do
-          (swap! globals iterate-plan-improved globals) 
+          (swap! globals iterate-plan-improved globals)
           (println (print-csv keys-to-print @globals))))
       #_(swap! globals augmented-reset globals)
       #_(println "AUGMENTED_RESET")
       #_(do
-        (swap! globals iterate-plan globals)
-        (println (print-csv keys-to-print @globals)))
+          (swap! globals iterate-plan globals)
+          (println (print-csv keys-to-print @globals)))
       #_(while (and (some #(> % 5) (flatten (vals (get @globals :threshold-report))))
-                  (> 200 (get @globals :iteration)))
-        (do
-          (swap! globals iterate-plan globals) 
-          (println (print-csv keys-to-print @globals))))
+                    (> 200 (get @globals :iteration)))
+          (do
+            (swap! globals iterate-plan globals) 
+            (println (print-csv keys-to-print @globals))))
       )))
 
