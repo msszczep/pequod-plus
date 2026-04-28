@@ -212,7 +212,6 @@
 (defn solution-5 [a s c k ps b λ p-i include-pollutants?]
   (let [[b1 b2 b3 b4 b5] (flatten b)
         [p1 p2 p3 p4 p5] (flatten ps)
-        _ (println "solution-5/ps: " ps)
         log-a (Math/log a)
         log-b1 (Math/log b1)
         log-b2 (Math/log b2)
@@ -707,15 +706,18 @@
                  (filterv #(= product (:id %)))
                  first
                  :price))
-          (get-lambda-o [w private-good-prices input-prices public-good-prices]
+          (get-product-price-db [product select-statement]
+            (->> {:builder-fn result-set/as-unqualified-lower-maps}
+                 (jdbc/execute! ds [select-statement product])
+                 first
+                 :price))
+          (get-lambda-o [w input-prices]
             (let [industry (:industry w)
                   product (:product w)]
-              (cond (= 0 industry) (get-product-price product private-good-prices)
+              (cond (= 0 industry) (get-product-price-db product "select price from private_good_prices where id = ?")
                     (= 1 industry) (get-product-price product input-prices)
-                    (= 2 industry) (get-product-price product public-good-prices))))]
-    (let [private-good-prices (:private-goods prices)
-          input-prices (:intermediate-inputs prices)
-          public-good-prices (:public-goods prices)
+                    (= 2 industry) (get-product-price-db product "select price from public_good_prices where id = ?"))))]
+    (let [input-prices (:intermediate-inputs prices)
           input-count-r (if include-pollutants?
                           (+ (count (:intermediate-inputs wc))
                              (count (:labor wc))
@@ -734,7 +736,6 @@
                                        (jdbc/execute! ds ["select price from pollutant_prices where id = 1"])
                                        first
                                        :price)
-          _ (println "pollutant-prices-to-use: " pollutant-prices-to-use)
           ps (if include-pollutants?
                [(mapv (partial get-product-category-price prices :intermediate-inputs) (first p-i))
                 (mapv (partial get-product-category-price prices :nature) (second p-i))
@@ -744,7 +745,7 @@
                 (mapv (partial get-product-category-price prices :nature) (second p-i))
                 (mapv (partial get-product-category-price prices :labor) (nth p-i 2))])
           b (map-wc-values wc :exponent)
-          λ (get-lambda-o wc private-good-prices input-prices public-good-prices)]
+          λ (get-lambda-o wc input-prices)]
       (condp = input-count-r
         3 (merge wc (solution-3 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
         4 (merge wc (solution-4 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
@@ -876,8 +877,6 @@
       tx
       "update ccs set cc = ? where id = ?"
       updates)))
-
-; TODO - Create tables for prices, populate the tables.
 
 (defn consume-process-all-in-db [ds include-pollutants?]
   (jdbc/with-transaction [tx ds]
