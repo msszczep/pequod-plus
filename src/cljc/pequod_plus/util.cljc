@@ -911,7 +911,7 @@
         * exponent
       ) / (
         (SELECT total_sum FROM exponent_sums WHERE cc_id = public_goods.cc_id)
-        * (SELECT price FROM public_good_prices WHERE good_id = public_goods.good_id)
+        * (SELECT price FROM public_good_prices WHERE id = public_goods.good_id)
       )"])
     (println "CPAID/3")
     (when include-pollutants?
@@ -926,18 +926,18 @@
               POW(pollutant_prices.price, ccs.positive_utility_from_income)
             ) / ccs.negative_utility_from_exposure,
             1.0 / (ccs.negative_utility_from_exposure - ccs.positive_utility_from_income)
-          )
-        FROM ccs
-        JOIN pollutant_prices
-          ON pollutant_prices.good_id = pollutant_permissions.good_id
-        WHERE pollutant_permissions.cc_id = ccs.id"])
+           )
+          FROM ccs, pollutant_prices
+          WHERE pollutant_permissions.cc_id = ccs.id
+          AND pollutant_prices.id = pollutant_permissions.pollutant_id;"])
         (println "CPAID/4")
         (jdbc/execute! tx ["UPDATE ccs
         SET income = income + (
           SELECT COALESCE(SUM(demand), 0)
           FROM pollutant_permissions
           WHERE pollutant_permissions.cc_id = ccs.id
-        )"])))
+        )"])
+        (println "CPAID/5")))
     (jdbc/execute! tx ["DROP TABLE exponent_sums"])))
 
 (defn consume-improved [ds include-pollutants? private-goods public-goods pollutants num-of-ccs price-data]

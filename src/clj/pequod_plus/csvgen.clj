@@ -240,7 +240,10 @@
          pollutant-prices-index "CREATE INDEX idx_pollutant_prices ON pollutant_prices(id)"
          private-goods-cc-id-index "CREATE INDEX idx_private_cc_id ON private_goods(cc_id);"
          private-goods-good-id-index "CREATE INDEX idx_private_good_id ON private_goods(good_id);"
-         public-goods-index "CREATE INDEX idx_public_cc ON public_goods(cc_id);"
+         public-goods-cc-id-index "CREATE INDEX idx_public_cc ON public_goods(cc_id);"
+         public-goods-good-id-index "CREATE INDEX idx_public_good_id ON public_goods(good_id);"
+         pollutant-permissions-cc-id-index "CREATE INDEX idx_pp_cc_id ON pollutant_permissions(cc_id);"
+         pollutant-permissions-pollutant-id-index "CREATE INDEX idx_pp_pollutant_id ON pollutant_permissions(pollutant_id);"
          ccs-index "CREATE INDEX idx_ccs ON ccs(id);"
         ]
     (do
@@ -256,7 +259,8 @@
       (jdbc/execute! ds [pollutant-prices-index])
       (jdbc/execute! ds [private-goods-cc-id-index])
       (jdbc/execute! ds [private-goods-good-id-index])
-      (jdbc/execute! ds [public-goods-index])
+      (jdbc/execute! ds [public-goods-cc-id-index])
+      (jdbc/execute! ds [public-goods-good-id-index])
       (jdbc/execute! ds [ccs-index])
     )))
 
