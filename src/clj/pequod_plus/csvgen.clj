@@ -235,11 +235,13 @@
                                      demand REAL,
                                      surplus REAL
                                     );"
-         private-good-prices-index "CREATE INDEX idx_private_good_prices ON private_good_prices(id)"
+         private-good-prices-id-index "CREATE INDEX id_idx_private_good_prices ON private_good_prices(id)"
          public-good-prices-index "CREATE INDEX idx_public_good_prices ON public_good_prices(id)"
          pollutant-prices-index "CREATE INDEX idx_pollutant_prices ON pollutant_prices(id)"
-         private-goods-index "CREATE INDEX idx_private_cc ON private_goods(cc_id);"
+         private-goods-cc-id-index "CREATE INDEX idx_private_cc_id ON private_goods(cc_id);"
+         private-goods-good-id-index "CREATE INDEX idx_private_good_id ON private_goods(good_id);"
          public-goods-index "CREATE INDEX idx_public_cc ON public_goods(cc_id);"
+         ccs-index "CREATE INDEX idx_ccs ON ccs(id);"
         ]
     (do
       (jdbc/execute! ds [ccs-table])
@@ -249,11 +251,14 @@
       (jdbc/execute! ds [private-good-prices-table])
       (jdbc/execute! ds [public-good-prices-table])
       (jdbc/execute! ds [pollutant-prices-table])
-      (jdbc/execute! ds [private-good-prices-index])
+      (jdbc/execute! ds [private-good-prices-id-index])
       (jdbc/execute! ds [public-good-prices-index])
       (jdbc/execute! ds [pollutant-prices-index])
+      (jdbc/execute! ds [private-goods-cc-id-index])
+      (jdbc/execute! ds [private-goods-good-id-index])
       (jdbc/execute! ds [public-goods-index])
-)))
+      (jdbc/execute! ds [ccs-index])
+    )))
 
 (defn setup-improved [t _ experiment]
   (let [intermediate-inputs (vec (range 1 (inc (t :intermediate-inputs))))

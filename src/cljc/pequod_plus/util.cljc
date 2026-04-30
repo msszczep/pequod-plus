@@ -816,7 +816,6 @@
         pollutant-prices (if include-pollutants? (:pollutants price-data) [])]
     (doseq [cc ccs]
       (let [cc-id (:id cc)
-            _ (if (zero? (mod cc-id 25)) (println "cc-id: " cc-id))
             income (:income cc)
             private-good-exponents-sum (->> builder-fn-map
                                             (jdbc/execute-one! ds ["select sum(exponent) as sum_exponent from private_goods where cc_id = ?" cc-id])
@@ -880,6 +879,7 @@
 
 (defn consume-process-all-in-db [ds include-pollutants?]
   (jdbc/with-transaction [tx ds]
+    (println "CPAID/0")
     (jdbc/execute! tx ["CREATE TEMP TABLE exponent_sums AS
       SELECT
         c.id AS cc_id,
@@ -895,13 +895,17 @@
         SELECT cc_id, SUM(exponent) AS sum_exp
         FROM public_goods GROUP BY cc_id
       ) pub_sum ON pub_sum.cc_id = c.id"])
+    (println "CPAID/0.5")
+    (jdbc/execute! tx ["CREATE INDEX temp.idx_exponent_sums ON exponent_sums(cc_id);"])
+    (println "CPAID/1")
     (jdbc/execute! tx ["UPDATE private_goods SET demand = (
         (SELECT income FROM ccs WHERE id = private_goods.cc_id)
         * exponent
       ) / (
         (SELECT total_sum FROM exponent_sums WHERE cc_id = private_goods.cc_id)
-        * (SELECT price FROM private_good_prices WHERE good_id = private_goods.good_id)
+        * (SELECT price FROM private_good_prices WHERE id = private_goods.good_id)
       )"])
+    (println "CPAID/2")
     (jdbc/execute! tx ["UPDATE public_goods SET demand = (
         (SELECT income FROM ccs WHERE id = public_goods.cc_id)
         * exponent
@@ -909,8 +913,10 @@
         (SELECT total_sum FROM exponent_sums WHERE cc_id = public_goods.cc_id)
         * (SELECT price FROM public_good_prices WHERE good_id = public_goods.good_id)
       )"])
+    (println "CPAID/3")
     (when include-pollutants?
-      (jdbc/execute! tx ["UPDATE pollutant_permissions
+      (do
+        (jdbc/execute! tx ["UPDATE pollutant_permissions
         SET demand =
           POW(5, 1.0 / (ccs.negative_utility_from_exposure - ccs.positive_utility_from_income))
           *
@@ -925,12 +931,13 @@
         JOIN pollutant_prices
           ON pollutant_prices.good_id = pollutant_permissions.good_id
         WHERE pollutant_permissions.cc_id = ccs.id"])
-      (jdbc/execute! tx ["UPDATE ccs
+        (println "CPAID/4")
+        (jdbc/execute! tx ["UPDATE ccs
         SET income = income + (
           SELECT COALESCE(SUM(demand), 0)
           FROM pollutant_permissions
           WHERE pollutant_permissions.cc_id = ccs.id
-        )"]))
+        )"])))
     (jdbc/execute! tx ["DROP TABLE exponent_sums"])))
 
 (defn consume-improved [ds include-pollutants? private-goods public-goods pollutants num-of-ccs price-data]
