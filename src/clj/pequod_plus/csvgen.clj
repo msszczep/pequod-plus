@@ -73,23 +73,33 @@
     t2))
 
 (defn get-demand-sum [ds table-name]
-  (->> result-set/as-unqualified-lower-maps
-       (jdbc/execute-one! ds ["select sum(demand) as s from ?" table-name])
-       :s))
+  (let [q (case table-name
+            :pollutant-permissions "select sum(demand) as s from pollutant_permissions"
+            :private-goods "select sum(demand) as s from private_goods"
+            :public-goods "select sum(demand) as s from public_goods"
+            "dunno")]
+    (->> {:builder-fn result-set/as-unqualified-lower-maps}
+         (jdbc/execute-one! ds [q])
+         :s)))
 
 (defn iterate-plan-improved [t _]
   (let [include-pollutants? (:include-pollutants? t)
         ds (:ds t)
+        _ (println "price-data/keys: " (keys (:price-data t)))
         wcs (mapv (partial util/proposal ds include-pollutants? (:price-data t)) (:wcs t))
         _ (println "wcs loaded")
         _ (util/consume-process-all-in-db ds include-pollutants?)
         ; _ (util/consume-from-db ds include-pollutants? (t :private-goods) (t :public-good-types) (t :pollutant-types) (t :num-of-ccs) (get-in t [:price-data]))
         _ (println "consume-from-db complete")
-        pollutants-demand-sum (get-demand-sum ds "pollutant_permissions")
-        private-goods-demand-sum (get-demand-sum ds "private_goods")
-        public-goods-demand-sum (get-demand-sum ds "public_goods")
-        price-data (util/update-surpluses-prices-improved wcs (:num-of-ccs t) pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum (:natural-resources-supply t) (:labor-supply t) (:price-data t) (:price-delta-data t) include-pollutants?)
+        pollutants-demand-sum (get-demand-sum ds :pollutant-permissions)
+        private-goods-demand-sum (get-demand-sum ds :private-goods)
+        public-goods-demand-sum (get-demand-sum ds :public-goods)
+        _ (println "pollutants-demand-sum: " pollutants-demand-sum)
+        _ (println "private-goods-demand-sum: " private-goods-demand-sum)
+        _ (println "public-goods-demand-sum: " public-goods-demand-sum)
+        price-data (util/update-surpluses-prices-improved ds wcs (:num-of-ccs t) pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum (:natural-resources-supply t) (:labor-supply t) (:price-data t) (:price-delta-data t) include-pollutants?)
         _ (println "price-data updated")
+        _ (println "price-data: " price-data)
         surplus-data (util/get-pricing-data price-data :surplus include-pollutants?)
         supply-data (util/get-pricing-data price-data :supply include-pollutants?)
         demand-data (util/get-pricing-data price-data :demand include-pollutants?)

@@ -68,6 +68,9 @@
              :price-data {:intermediate-inputs (make-price-maps (t :init-intermediate-price) num-im-inputs price-delta-to-use pd-to-use)
                           :nature (make-price-maps (t :init-nature-price) num-resources price-delta-to-use pd-to-use)
                           :labor (make-price-maps (t :init-labor-price) num-labor price-delta-to-use pd-to-use)
+                          :private-goods (make-price-maps (t :init-private-good-price) num-private-goods price-delta-to-use pd-to-use)
+                          :public-goods (make-price-maps (t :init-public-good-price) num-public-goods price-delta-to-use pd-to-use)
+                          :pollutants (make-price-maps (t :init-pollutant-price) num-pollutants price-delta-to-use pd-to-use)
                           }))))
 
 (defn add-ids [cs]
@@ -634,11 +637,18 @@
         new-delta (force-to-one (get-delta price-delta-to-use (get price-delta-data type-to-use 1)))
         new-price (cond (pos? surplus) (* (- 1 new-delta) (:price price-datum))
                         (neg? surplus) (* (+ 1 new-delta) (:price price-datum))
-                        :else (:price price-datum))]
+                        :else (:price price-datum))
+        ; _ (println [type-to-use new-delta new-price price-delta-to-use supply demand surplus id-to-use])
+        ]
     (case type-to-use
-      :private-goods (jdbc/execute! ds ["UPDATE private_good_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" new-delta new-price price-delta-to-use supply demand surplus id-to-use])
-      :public-goods (jdbc/execute! ds ["UPDATE public_good_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" new-delta new-price price-delta-to-use supply demand surplus id-to-use])
-      :pollutants (jdbc/execute! ds ["UPDATE pollutant_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" new-delta new-price price-delta-to-use supply demand surplus id-to-use])
+      :private-goods (do 
+                       (jdbc/execute! ds ["UPDATE private_good_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" new-delta new-price price-delta-to-use supply demand surplus id-to-use])
+                       (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use price-delta-to-use :supply supply :demand demand))
+      :public-goods (do 
+                      (jdbc/execute! ds ["UPDATE public_good_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" new-delta new-price price-delta-to-use supply demand surplus id-to-use])
+                      (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use price-delta-to-use :supply supply :demand demand))
+      :pollutants (do 
+                    (jdbc/execute! ds ["UPDATE pollutant_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" new-delta new-price price-delta-to-use supply demand surplus id-to-use])                    (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use price-delta-to-use :supply supply :demand demand))
       (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use price-delta-to-use :supply supply :demand demand))))
 
 (defn compute-percent-surplus [supply-list demand-list surplus-list]
@@ -667,11 +677,11 @@
         price-updates (mapv (fn [type-to-use] (mapv (partial compute-surpluses-prices wcs ccs natural-resources-supply labor-supply price-delta-data type-to-use) (get-in price-data [type-to-use]))) categories)]
      (zipmap categories price-updates)))
 
-(defn update-surpluses-prices-improved [wcs num-of-ccs pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum natural-resources-supply labor-supply price-data price-delta-data include-pollutants?]
+(defn update-surpluses-prices-improved [ds wcs num-of-ccs pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum natural-resources-supply labor-supply price-data price-delta-data include-pollutants?]
   (let [categories (if include-pollutants?
                      [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
                      [:private-goods :intermediate-inputs :nature :labor :public-goods])
-        price-updates (mapv (fn [type-to-use] (mapv (partial compute-surpluses-prices-improved wcs num-of-ccs pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum natural-resources-supply labor-supply price-delta-data type-to-use) (get-in price-data [type-to-use]))) categories)]
+        price-updates (mapv (fn [type-to-use] (mapv (partial compute-surpluses-prices-improved ds wcs num-of-ccs pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum natural-resources-supply labor-supply price-delta-data type-to-use) (get-in price-data [type-to-use]))) categories)]
      (zipmap categories price-updates)))
 
 (defn compute-threshold [supply-list demand-list surplus-list]
@@ -879,7 +889,6 @@
 
 (defn consume-process-all-in-db [ds include-pollutants?]
   (jdbc/with-transaction [tx ds]
-    (println "CPAID/0")
     (jdbc/execute! tx ["CREATE TEMP TABLE exponent_sums AS
       SELECT
         c.id AS cc_id,
@@ -895,9 +904,7 @@
         SELECT cc_id, SUM(exponent) AS sum_exp
         FROM public_goods GROUP BY cc_id
       ) pub_sum ON pub_sum.cc_id = c.id"])
-    (println "CPAID/0.5")
     (jdbc/execute! tx ["CREATE INDEX temp.idx_exponent_sums ON exponent_sums(cc_id);"])
-    (println "CPAID/1")
     (jdbc/execute! tx ["UPDATE private_goods SET demand = (
         (SELECT income FROM ccs WHERE id = private_goods.cc_id)
         * exponent
@@ -905,7 +912,6 @@
         (SELECT total_sum FROM exponent_sums WHERE cc_id = private_goods.cc_id)
         * (SELECT price FROM private_good_prices WHERE id = private_goods.good_id)
       )"])
-    (println "CPAID/2")
     (jdbc/execute! tx ["UPDATE public_goods SET demand = (
         (SELECT income FROM ccs WHERE id = public_goods.cc_id)
         * exponent
@@ -913,7 +919,6 @@
         (SELECT total_sum FROM exponent_sums WHERE cc_id = public_goods.cc_id)
         * (SELECT price FROM public_good_prices WHERE id = public_goods.good_id)
       )"])
-    (println "CPAID/3")
     (when include-pollutants?
       (do
         (jdbc/execute! tx ["UPDATE pollutant_permissions
@@ -930,14 +935,12 @@
           FROM ccs, pollutant_prices
           WHERE pollutant_permissions.cc_id = ccs.id
           AND pollutant_prices.id = pollutant_permissions.pollutant_id;"])
-        (println "CPAID/4")
         (jdbc/execute! tx ["UPDATE ccs
         SET income = income + (
           SELECT COALESCE(SUM(demand), 0)
           FROM pollutant_permissions
           WHERE pollutant_permissions.cc_id = ccs.id
-        )"])
-        (println "CPAID/5")))
+        )"])))
     (jdbc/execute! tx ["DROP TABLE exponent_sums"])))
 
 (defn consume-improved [ds include-pollutants? private-goods public-goods pollutants num-of-ccs price-data]
