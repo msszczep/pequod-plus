@@ -996,6 +996,13 @@
             :private-goods (individual-augment (:private-goods cc))
             :pollutant-permissions (individual-augment (:pollutant-permissions cc))))
 
+(defn augment-cc-in-db [ds include-pollutants?]
+  (jdbc/with-transaction [tx ds]
+    (jdbc/execute! tx ["UPDATE private_goods SET exponent = augment + exponent;"])
+    (jdbc/execute! tx ["UPDATE public_goods SET exponent = augment + exponent;"])
+    (when include-pollutants?
+      (jdbc/execute! tx ["UPDATE pollutant_permissions SET exponent = augment + exponent;"]))))
+
 (defn augmented-reset [t]
   (assoc t :iteration 0
            :ccs (mapv augment-cc (get t :ccs))

@@ -27,7 +27,7 @@
          :wcs                      []
          :ccs                      []
          :iteration                0
-         :include-pollutants?      true
+         :include-pollutants?      false
          :ds                       (jdbc/get-datasource {:dbtype "sqlite" :dbname "pequod.db"})}))
 
 (defn compute-gdp [supply-list private-good-prices public-good-prices]
@@ -85,21 +85,21 @@
 (defn iterate-plan-improved [t _]
   (let [include-pollutants? (:include-pollutants? t)
         ds (:ds t)
-        _ (println "price-data/keys: " (keys (:price-data t)))
+        ; _ (println "price-data/keys: " (keys (:price-data t)))
         wcs (mapv (partial util/proposal ds include-pollutants? (:price-data t)) (:wcs t))
-        _ (println "wcs loaded")
+        ; _ (println "wcs loaded")
         _ (util/consume-process-all-in-db ds include-pollutants?)
         ; _ (util/consume-from-db ds include-pollutants? (t :private-goods) (t :public-good-types) (t :pollutant-types) (t :num-of-ccs) (get-in t [:price-data]))
-        _ (println "consume-from-db complete")
+        ; _ (println "consume-from-db complete")
         pollutants-demand-sum (get-demand-sum ds :pollutant-permissions)
         private-goods-demand-sum (get-demand-sum ds :private-goods)
         public-goods-demand-sum (get-demand-sum ds :public-goods)
-        _ (println "pollutants-demand-sum: " pollutants-demand-sum)
-        _ (println "private-goods-demand-sum: " private-goods-demand-sum)
-        _ (println "public-goods-demand-sum: " public-goods-demand-sum)
+        ; _ (println "pollutants-demand-sum: " pollutants-demand-sum)
+        ; _ (println "private-goods-demand-sum: " private-goods-demand-sum)
+        ; _ (println "public-goods-demand-sum: " public-goods-demand-sum)
         price-data (util/update-surpluses-prices-improved ds wcs (:num-of-ccs t) pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum (:natural-resources-supply t) (:labor-supply t) (:price-data t) (:price-delta-data t) include-pollutants?)
-        _ (println "price-data updated")
-        _ (println "price-data: " price-data)
+        ; _ (println "price-data updated")
+        ; _ (println "price-data: " price-data)
         surplus-data (util/get-pricing-data price-data :surplus include-pollutants?)
         supply-data (util/get-pricing-data price-data :supply include-pollutants?)
         demand-data (util/get-pricing-data price-data :demand include-pollutants?)
@@ -127,6 +127,12 @@
   (assoc t :iteration 0
            :ccs (mapv util/augment-cc (get t :ccs))
            :wcs (mapv util/augment-wc (get t :wcs))))
+
+(defn augmented-reset-improved [t _]
+  (do
+    (util/augment-cc-in-db (:ds t) (:include-pollutants? t))
+    (assoc t :iteration 0
+             :wcs (mapv util/augment-wc (get t :wcs)))))
 
 (defn update-aggregated-demand [value-to-use m]
   (->> m
@@ -348,15 +354,15 @@
         (do
           (swap! globals iterate-plan-improved globals)
           (println (print-csv keys-to-print @globals))))
-      #_(swap! globals augmented-reset globals)
-      #_(println "AUGMENTED_RESET")
-      #_(do
-          (swap! globals iterate-plan globals)
+      (swap! globals augmented-reset-improved globals)
+      (println "AUGMENTED_RESET")
+      (do
+          (swap! globals iterate-plan-improved globals)
           (println (print-csv keys-to-print @globals)))
-      #_(while (and (some #(> % 5) (flatten (vals (get @globals :threshold-report))))
+      (while (and (some #(> % 5) (flatten (vals (get @globals :threshold-report))))
                     (> 200 (get @globals :iteration)))
           (do
-            (swap! globals iterate-plan globals) 
+            (swap! globals iterate-plan-improved globals)
             (println (print-csv keys-to-print @globals))))
       )))
 
