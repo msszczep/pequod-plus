@@ -489,6 +489,91 @@
       :nature-quantities nature-qs
       :labor-quantities labor-qs})))
 
+(defn solution-9 [a s c k ps b λ p-i include-pollutants?]
+  (let [[b1 b2 b3 b4 b5 b6 b7 b8 b9] (flatten b)
+        [p1 p2 p3 p4 p5 p6 p7 p8 p9] (flatten ps)
+        log-a (Math/log a)
+        log-b1 (Math/log b1)
+        log-b2 (Math/log b2)
+        log-b3 (Math/log b3)
+        log-b4 (Math/log b4)
+        log-b5 (Math/log b5)
+        log-b6 (Math/log b6)
+        log-b7 (Math/log b7)
+        log-b8 (Math/log b8)
+        log-b9 (Math/log b9)
+        log-c (Math/log c)
+        log-k (Math/log k)
+        log-s (Math/log s)
+        log-p1 (Math/log p1)
+        log-p2 (Math/log p2)
+        log-p3 (Math/log p3)
+        log-p4 (Math/log p4)
+        log-p5 (Math/log p5)
+        log-p6 (Math/log p6)
+        log-p7 (Math/log p7)
+        log-p8 (Math/log p8)
+        log-p9 (Math/log p9)
+        log-λ (Math/log λ)
+        denominator (+ c (- k) (* k b1) (* k b2) (* k b3) (* k b4) (* k b5) (* k b6) (* k b7) (* k b8) (* k b9))
+        k-log-a (- (* k log-a))
+        b1-k-log-b1 (- (* b1 k log-b1))
+        b2-k-log-b2 (- (* b2 k log-b2))
+        b3-k-log-b3 (- (* b3 k log-b3))
+        b4-k-log-b4 (- (* b4 k log-b4))
+        b5-k-log-b5 (- (* b5 k log-b5))
+        b6-k-log-b6 (- (* b6 k log-b6))
+        b7-k-log-b7 (- (* b7 k log-b7))
+        b8-k-log-b8 (- (* b8 k log-b8))
+        b9-k-log-b9 (- (* b9 k log-b9))
+        b1-k-log-p1 (* b1 k log-p1)
+        b2-k-log-p2 (* b2 k log-p2)
+        b3-k-log-p3 (* b3 k log-p3)
+        b4-k-log-p4 (* b4 k log-p4)
+        b5-k-log-p5 (* b5 k log-p5)
+        b6-k-log-p6 (* b6 k log-p6)
+        b7-k-log-p7 (* b7 k log-p7)
+        b8-k-log-p8 (* b8 k log-p8)
+        b9-k-log-p9 (* b9 k log-p9)
+        c-log-c (- (* c log-c))
+        c-log-k (* c log-k)
+        c-log-s (* c log-s)
+        minus-k-log-λ (- (* k log-λ))
+        k-log-λ (* k log-λ)
+        k-log-p1 (* k log-p1)
+        k-log-p2 (* k log-p2)
+        k-log-p3 (* k log-p3)
+        k-log-p4 (* k log-p4)
+        k-log-p5 (* k log-p5)
+        k-log-p6 (* k log-p6)
+        k-log-p7 (* k log-p7)
+        k-log-p8 (* k log-p8)
+        k-log-p9 (* k log-p9)
+        output (Math/pow Math/E (/ (+ k-log-a c-log-k c-log-s (- (* c log-λ)) c-log-c b1-k-log-b1 b1-k-log-p1 (- (* b1 k log-λ)) b2-k-log-b2 b2-k-log-p2 (- (* b2 k log-λ)) b3-k-log-b3 b3-k-log-p3 (- (* b3 k log-λ)) b4-k-log-b4 b4-k-log-p4 (- (* b4 k log-λ)) b5-k-log-b5 b5-k-log-p5 (- (* b5 k log-λ)) b6-k-log-b6 b6-k-log-p6 (- (* b6 k log-λ)) b7-k-log-b7 b7-k-log-p7 (- (* b7 k log-λ)) b8-k-log-b8 b8-k-log-p8 (- (* b8 k log-λ)) b9-k-log-b9 b9-k-log-p9 (- (* b9 k log-λ))) denominator))
+        x1 (Math/pow Math/E (/ (+ k-log-a (* b2 k log-b1) (* b3 k log-b1) (* b4 k log-b1) (* b5 k log-b1) (* b6 k log-b1) (* b7 k log-b1) (* b8 k log-b1) (* b9 k log-b1) (* c log-b1) (- (* k log-b1)) b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k (- (* b2 k-log-p1)) (- (* b3 k-log-p1)) (- (* b4 k-log-p1)) (- (* b5 k-log-p1)) (- (* b6 k-log-p1)) (- (* b7 k-log-p1)) (- (* b8 k-log-p1)) (- (* b9 k-log-p1)) k-log-p1 (- (* c log-p1)) b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s minus-k-log-λ) denominator))
+        x2 (Math/pow Math/E (/ (+ k-log-a (* b1 k log-b2) (* b3 k log-b2) (* b4 k log-b2) (* b5 k log-b2) (* b6 k log-b2) (* b7 k log-b2) (* b8 k log-b2) (* b9 k log-b2) (* c log-b2) (- (* k log-b2)) b1-k-log-b1 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k (- (* b1 k-log-p2)) (- (* b3 k-log-p2)) (- (* b4 k-log-p2)) (- (* b5 k-log-p2)) (- (* b6 k-log-p2)) (- (* b7 k-log-p2)) (- (* b8 k-log-p2)) (- (* b9 k-log-p2)) (* k-log-p2) (- (* c log-p2)) b1-k-log-p1 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s minus-k-log-λ) denominator))
+        x3 (Math/pow Math/E (/ (+ k-log-a (* b1 k log-b3) (* b2 k log-b3) (* b4 k log-b3) (* b5 k log-b3) (* b6 k log-b3) (* b7 k log-b3) (* b8 k log-b3) (* b9 k log-b3) (* c log-b3) (- (* k log-b3)) b1-k-log-b1 b2-k-log-b2 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k (- (* b1 k-log-p3)) (- (* b2 k-log-p3)) (- (* b4 k-log-p3)) (- (* b5 k-log-p3)) (- (* b6 k-log-p3)) (- (* b7 k-log-p3)) (- (* b8 k-log-p3)) (- (* b9 k-log-p3)) (* k-log-p3) (- (* c log-p3)) b1-k-log-p1 b2-k-log-p2 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s minus-k-log-λ) denominator))
+        x4 (Math/pow Math/E (/ (+ k-log-a (* b1 k log-b4) (* b2 k log-b4) (* b3 k log-b4) (* b5 k log-b4) (* b6 k log-b4) (* b7 k log-b4) (* b8 k log-b4) (* b9 k log-b4) (* c log-b4) (- (* k log-b4)) b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k (- (* b1 k-log-p4)) (- (* b2 k-log-p4)) (- (* b3 k-log-p4)) (- (* b5 k-log-p4)) (- (* b6 k-log-p4)) (- (* b7 k-log-p4)) (- (* b8 k-log-p4)) (- (* b9 k-log-p4)) (* k-log-p4) (- (* c log-p4)) b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s minus-k-log-λ) denominator))
+        x5 (Math/pow Math/E (/ (+ k-log-a (* b1 k log-b5) (* b2 k log-b5) (* b3 k log-b5) (* b4 k log-b5) (* b6 k log-b5) (* b7 k log-b5) (* b8 k log-b5) (* b9 k log-b5) (* c log-b5) (- (* k log-b5)) b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k (- (* b1 k-log-p5)) (- (* b2 k-log-p5)) (- (* b3 k-log-p5)) (- (* b4 k-log-p5)) (- (* b6 k-log-p5)) (- (* b7 k-log-p5)) (- (* b8 k-log-p5)) (- (* b9 k-log-p5)) (* k-log-p5) (- (* c log-p5)) b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s minus-k-log-λ) denominator))
+        x6 (Math/pow Math/E (/ (+ k-log-a (* b1 k log-b6) (* b2 k log-b6) (* b3 k log-b6) (* b4 k log-b6) (* b5 k log-b6) (* b7 k log-b6) (* b8 k log-b6) (* b9 k log-b6) (* c log-b6) (- (* k log-b6)) b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k (- (* b1 k-log-p6)) (- (* b2 k-log-p6)) (- (* b3 k-log-p6)) (- (* b4 k-log-p6)) (- (* b5 k-log-p6)) (- (* b7 k-log-p6)) (- (* b8 k-log-p6)) (- (* b9 k-log-p6)) (* k-log-p6) (- (* c log-p6)) b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s minus-k-log-λ) denominator))
+        x7 (Math/pow Math/E (/ (+ k-log-a (* b1 k log-b7) (* b2 k log-b7) (* b3 k log-b7) (* b4 k log-b7) (* b5 k log-b7) (* b6 k log-b7) (* b8 k log-b7) (* b9 k log-b7) (* c log-b7) (- (* k log-b7)) b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k (- (* b1 k-log-p7)) (- (* b2 k-log-p7)) (- (* b3 k-log-p7)) (- (* b4 k-log-p7)) (- (* b5 k-log-p7)) (- (* b6 k-log-p7)) (- (* b8 k-log-p7)) (- (* b9 k-log-p7)) (* k-log-p7) (- (* c log-p7)) b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b8-k-log-p8 b9-k-log-p9 c-log-s minus-k-log-λ) denominator))
+        x8 (Math/pow Math/E (/ (+ k-log-a (* b1 k log-b8) (* b2 k log-b8) (* b3 k log-b8) (* b4 k log-b8) (* b5 k log-b8) (* b6 k log-b8) (* b7 k log-b8) (* b9 k log-b8) (* c log-b8) (- (* k log-b8)) b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b9-k-log-b9 c-log-c c-log-k (- (* b1 k-log-p8)) (- (* b2 k-log-p8)) (- (* b3 k-log-p8)) (- (* b4 k-log-p8)) (- (* b5 k-log-p8)) (- (* b6 k-log-p8)) (- (* b7 k-log-p8)) (- (* b9 k-log-p8)) (* k-log-p8) (- (* c log-p8)) b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b9-k-log-p9 c-log-s minus-k-log-λ) denominator))
+        x9 (Math/pow Math/E (/ (+ k-log-a (* b1 k log-b9) (* b2 k log-b9) (* b3 k log-b9) (* b4 k log-b9) (* b5 k log-b9) (* b6 k log-b9) (* b7 k log-b9) (* b8 k log-b9) (* c log-b9) (- (* k log-b9)) b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 c-log-c c-log-k (- (* b1 k-log-p9)) (- (* b2 k-log-p9)) (- (* b3 k-log-p9)) (- (* b4 k-log-p9)) (- (* b5 k-log-p9)) (- (* b6 k-log-p9)) (- (* b7 k-log-p9)) (- (* b8 k-log-p9)) (* k-log-p9) (- (* c log-p9)) b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 c-log-s minus-k-log-λ) denominator)) 
+        effort (Math/pow Math/E (/ (+ (- (* log-a)) (- (* b1 log-b1)) (- (* b2 log-b2)) (- (* b3 log-b3)) (- (* b4 log-b4)) (- (* b5 log-b5)) (- (* b6 log-b6)) (- (* b7 log-b7)) (- (* b8 log-b8)) (- (* b9 log-b9)) (* b1 log-p1) (* b2 log-p2) (* b3 log-p3) (* b4 log-p4) (* b5 log-p5) (* b6 log-p6) (* b7 log-p7) (* b8 log-p8) (* b9 log-p9) (- (* b1 log-λ)) (- (* b2 log-λ)) (- (* b3 log-λ)) (- (* b4 log-λ)) (- (* b5 log-λ)) (- (* b6 log-λ)) (- (* b7 log-λ)) (- (* b8 log-λ)) (- (* b9 log-λ)) (/ (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)) (- (* b6 k log-λ)) (- (* b7 k log-λ)) (- (* b8 k log-λ)) (- (* b9 k log-λ))) denominator) (- (/ (* b1 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)) (- (* b6 k log-λ)) (- (* b7 k log-λ)) (- (* b8 k log-λ)) (- (* b9 k log-λ)))) denominator)) (- (/ (* b2 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)) (- (* b6 k log-λ)) (- (* b7 k log-λ)) (- (* b8 k log-λ)) (- (* b9 k log-λ)))) denominator)) (- (/ (* b3 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)) (- (* b6 k log-λ)) (- (* b7 k log-λ)) (- (* b8 k log-λ)) (- (* b9 k log-λ)))) denominator)) (- (/ (* b4 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)) (- (* b6 k log-λ)) (- (* b7 k log-λ)) (- (* b8 k log-λ)) (- (* b9 k log-λ)))) denominator)) (- (/ (* b5 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)) (- (* b6 k log-λ)) (- (* b7 k log-λ)) (- (* b8 k log-λ)) (- (* b9 k log-λ)))) denominator)) (- (/ (* b6 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)) (- (* b6 k log-λ)) (- (* b7 k log-λ)) (- (* b8 k log-λ)) (- (* b9 k log-λ)))) denominator)) (- (/ (* b7 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)) (- (* b6 k log-λ)) (- (* b7 k log-λ)) (- (* b8 k log-λ)) (- (* b9 k log-λ)))) denominator)) (- (/ (* b8 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)) (- (* b6 k log-λ)) (- (* b7 k log-λ)) (- (* b8 k log-λ)) (- (* b9 k log-λ)))) denominator)) (- (/ (* b9 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)) (- (* b6 k log-λ)) (- (* b7 k log-λ)) (- (* b8 k log-λ)) (- (* b9 k log-λ)))) denominator))) c))
+        [intermediate-input-qs nature-qs labor-qs pollutant-qs] (allot-production-quantities p-i [x1 x2 x3 x4 x5 x6 x7 x8 x9] include-pollutants?)]
+    (if include-pollutants?
+     {:output output
+      :effort effort
+      :intermediate-input-quantities intermediate-input-qs
+      :nature-quantities nature-qs
+      :labor-quantities labor-qs
+      :pollutant-quantities pollutant-qs}
+     {:output output
+      :effort effort
+      :intermediate-input-quantities intermediate-input-qs
+      :nature-quantities nature-qs
+      :labor-quantities labor-qs})))
+
 (defn get-delta [price-delta price-delta-datum]
   (->> price-delta-datum
        (* price-delta)
