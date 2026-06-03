@@ -1,0 +1,16 @@
+rm -rf ./pequod.db; cp docs/pequod-gold-standard.db ./pequod.db; lein clean; time lein run -m pequod-plus.csvgen ppex001
+
+
+Open a prompt:
+python3 -m sqlite3 pequod.db
+
+select list of tables:
+select name from sqlite_master where type = 'table' order by name;
+
+describe a table:
+PRAGMA table_info(table_name);
+
+list all indexes for a given table
+pragma index_list('table_name'):
+
+.quit
