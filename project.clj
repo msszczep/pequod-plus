@@ -5,6 +5,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
 
   :dependencies [[org.clojure/clojure "1.11.1"]
+                 [org.clojure/data.csv "1.1.1"]
                  [ring-server "0.5.0"]
                  [reagent "1.1.1"]
                  [reagent-utils "0.3.4"]
