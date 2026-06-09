@@ -40,12 +40,45 @@
                                      exponent REAL,
                                      augment REAL,
                                      demand REAL
+                                    );"
+        private-good-prices-table "CREATE TABLE private_good_prices (
+                                     id INTEGER,
+                                     price REAL,
+                                     price_delta REAL,
+                                     price_delta_to_use REAL,
+                                     pd REAL,
+                                     supply REAL,
+                                     demand REAL,
+                                     surplus REAL
+                                    );"
+        public-good-prices-table "CREATE TABLE public_good_prices (
+                                     id INTEGER,
+                                     price REAL,
+                                     price_delta REAL,
+                                     price_delta_to_use REAL,
+                                     pd REAL,
+                                     supply REAL,
+                                     demand REAL,
+                                     surplus REAL
+                                    );"
+        pollutant-prices-table "CREATE TABLE pollutant_prices (
+                                     id INTEGER,
+                                     price REAL,
+                                     price_delta REAL,
+                                     price_delta_to_use REAL,
+                                     pd REAL,
+                                     supply REAL,
+                                     demand REAL,
+                                     surplus REAL
                                     );"]
     (do
       (jdbc/execute! ds [ccs-table])
       (jdbc/execute! ds [private-goods-table])
       (jdbc/execute! ds [public-goods-table])
-      (jdbc/execute! ds [pollutant-permissions-table]))))
+      (jdbc/execute! ds [pollutant-permissions-table])
+      (jdbc/execute! ds [private-good-prices-table])
+      (jdbc/execute! ds [public-good-prices-table])
+      (jdbc/execute! ds [pollutant-prices-table]))))
 
 (defn import-data-into-ccs-tables [db]
   (shell/sh "sqlite3" db
@@ -54,6 +87,9 @@
     ".import resources/private_goods.csv private_goods"
     ".import resources/public_goods.csv public_goods"
     ".import resources/pollutant_permissions.csv pollutant_permissions"
+    ".import resources/private_good_prices.csv private_good_prices"
+    ".import resources/public_good_prices.csv public_good_prices"
+    ".import resources/pollutant_prices.csv pollutant_prices"
     "CREATE INDEX idx_private_cc_id ON private_goods(cc_id);"
     "CREATE INDEX idx_private_good_id ON private_goods(good_id);"
     "CREATE INDEX idx_public_cc ON public_goods(cc_id);"
@@ -61,6 +97,9 @@
     "CREATE INDEX idx_pp_cc_id ON pollutant_permissions(cc_id);"
     "CREATE INDEX idx_pp_pollutant_id ON pollutant_permissions(pollutant_id);"
     "CREATE INDEX idx_ccs ON ccs(id);"
+    "CREATE INDEX id_idx_private_good_prices ON private_good_prices(id)"
+    "CREATE INDEX idx_public_good_prices ON public_good_prices(id)"
+    "CREATE INDEX idx_pollutant_prices ON pollutant_prices(id)"
     ".quit"))
 
 (defn -main []
