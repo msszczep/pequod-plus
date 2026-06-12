@@ -1,5 +1,5 @@
-(ns pequod-plus.csv
-    (:require [pequod-plus.ccs-csv :as c]
+(ns pequod-plus.datasource
+    (:require [pequod-plus.populate :as p]
               [next.jdbc :as jdbc]
               [clojure.java.shell :as shell]))
 
@@ -106,8 +106,8 @@
   (let [db "pequod-csv-test.db"
         ds (jdbc/get-datasource {:dbtype "sqlite" :dbname db})]
     (do
-      (c/create-all-ccs-csv-files)
+      (p/create-all-ccs-csv-files)
       (create-normalized-ccs-tables ds)
       (import-data-into-ccs-tables db))))
 
-; time lein run -m pequod-plus.csv
+; time lein run -m pequod-plus.datasource
