@@ -80,6 +80,59 @@
       (jdbc/execute! ds [public-good-prices-table])
       (jdbc/execute! ds [pollutant-prices-table]))))
 
+(defn create-normalized-wcs-tables [ds]
+  (let [wcs-table "CREATE TABLE wcs (
+                     id INTEGER PRIMARY KEY,
+                     effort REAL,
+                     industry INTEGER,
+                     product INTEGER,
+                     output REAL,
+                     effort_elasticity REAL,
+                     total_factor_productivity REAL,
+                     disutility_of_effort_coefficient INTEGER,
+                     disutilty_of_effort_exponent REAL
+                   );"
+        nature-table "CREATE TABLE nature (
+                        wc_id INTEGER,
+                        nature_id INTEGER,
+                        exponent REAL,
+                        coefficient INT,
+                        augment REAL,
+                        PRIMARY KEY (wc_id, nature_id)
+                      );"
+        labor-table "CREATE TABLE labor (
+                       wc_id INTEGER,
+                       labor_id INTEGER,
+                       exponent REAL,
+                       coefficient INT,
+                       augment REAL,
+                       PRIMARY KEY (wc_id, labor_id)
+                     );"
+        pollutant-demands-table "CREATE TABLE pollutant_demands (
+                                   wc_id INTEGER,
+                                   pollutant_id INTEGER,
+                                   exponent REAL,
+                                   coefficient INT,
+                                   augment REAL,
+                                   PRIMARY KEY (wc_id, pollutant_id)
+                                 );"
+        intermediate-inputs-table "CREATE TABLE intermediate_inputs (
+                                     wc_id INTEGER,
+                                     intermediate_input_id INTEGER,
+                                     exponent REAL,
+                                     coefficient INT,
+                                     augment REAL,
+                                     PRIMARY KEY (wc_id, intermediate_input_id)
+                                   );"
+       ]
+    (do
+      (jdbc/execute! ds [wcs-table])
+      (jdbc/execute! ds [nature-table])
+      (jdbc/execute! ds [labor-table])
+      (jdbc/execute! ds [pollutant-demands-table])
+      (jdbc/execute! ds [intermediate-inputs-table])
+    )))
+
 (defn import-data-into-ccs-tables [db]
   (shell/sh "sqlite3" db
     ".mode csv"
@@ -109,6 +162,7 @@
       (p/create-all-ccs-csv-files)
       (p/create-all-wcs-csv-files)
       (create-normalized-ccs-tables ds)
+      (create-normalized-wcs-tables ds)
       (import-data-into-ccs-tables db))))
 
 ; time lein run -m pequod-plus.datasource
