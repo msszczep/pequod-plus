@@ -107,6 +107,7 @@
         ds (jdbc/get-datasource {:dbtype "sqlite" :dbname db})]
     (do
       (p/create-all-ccs-csv-files)
+      (p/create-all-wcs-csv-files)
       (create-normalized-ccs-tables ds)
       (import-data-into-ccs-tables db))))
 

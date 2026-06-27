@@ -6,8 +6,7 @@
 (defn rand-range [start end]
   (+ start (clojure.core/rand (- end start))))
 
-; TODO: add to database
-(defn generate-wc-metadata [wc-id num-goods]
+(defn generate-wc-metadata [num-goods wc-id]
   (letfn [(get-random-subsets []
             (let [s (->> [1 1 1 1 2 2 3 3 4 4]
                          shuffle
@@ -64,13 +63,14 @@
           pollutant-demands (populate-c-and-e wc-id :pollutant-demands production-inputs-pollutants pollutant-exponents)]
             (apply concat (concat (vector intermediate-inputs nature labor pollutant-demands))))))
 
+; TODO: Add Ids
 ; id effort industry product output effort_elasticity
 ; total_factor_productivity  disutility_of_effort_coefficient disutility_of_effort_exponent
 (defn create-wcs-in-csv [num-councils num-goods]
-  (for [id (range 1 (inc num-councils))
+  (for [multiplying-factor (range 1 (inc (/ num-councils num-goods 3)))
         industry (range 3)
         product (range 1 (inc num-goods))]
-    (vector id 0 industry product 0
+    (vector 0 industry product 0
             (rand-range 0.05 0.1)
             (rand-range 4 6)
             1
@@ -100,7 +100,7 @@
     (mapv #(vector % price price-delta-to-use nil pd-to-use nil nil nil)
           (range 1 (inc num-goods)))))
 
-(defn create-csv-file [file-name data]
+(defn create-file [file-name data]
   (with-open [writer (io/writer (str "resources/" file-name))]
     (csv/write-csv writer data)))
 
@@ -109,12 +109,38 @@
         num-goods 100
         max-exponent-threshold 0.005]
     (do
-      (create-csv-file "ccs.csv" (create-ccs-in-csv num-of-consumer-councils))
-      (create-csv-file "private_goods.csv" (create-goods-in-csv num-of-consumer-councils num-goods max-exponent-threshold))
-      (create-csv-file "public_goods.csv" (create-goods-in-csv num-of-consumer-councils num-goods max-exponent-threshold))
-      (create-csv-file "pollutant_permissions.csv" (create-goods-in-csv num-of-consumer-councils num-goods max-exponent-threshold))
-      (create-csv-file "private_good_prices.csv" (create-prices-in-csv num-goods))
-      (create-csv-file "public_good_prices.csv" (create-prices-in-csv num-goods))
-      (create-csv-file "pollutant_prices.csv" (create-prices-in-csv 1)))))
+      (create-file "ccs.csv" (create-ccs-in-csv num-of-consumer-councils))
+      (create-file "private_goods.csv" (create-goods-in-csv num-of-consumer-councils num-goods max-exponent-threshold))
+      (create-file "public_goods.csv" (create-goods-in-csv num-of-consumer-councils num-goods max-exponent-threshold))
+      (create-file "pollutant_permissions.csv" (create-goods-in-csv num-of-consumer-councils num-goods max-exponent-threshold))
+      (create-file "private_good_prices.csv" (create-prices-in-csv num-goods))
+      (create-file "public_good_prices.csv" (create-prices-in-csv num-goods))
+      (create-file "pollutant_prices.csv" (create-prices-in-csv 1)))))
+
+(defn filter-wc-metadata-by-category [wc-metadata category]
+  (->> wc-metadata
+       (filter #(= (first %) category))
+       (map rest)))
+
+(defn create-all-wcs-csv-files []
+  (let [num-of-consumer-councils 30000
+        num-goods 100
+        wc-metadata (->> num-of-consumer-councils
+                         inc
+                         (range 1)
+                         (map (partial generate-wc-metadata 100))
+                         flatten
+                         (partition 6))
+        intermediate-inputs (filter-wc-metadata-by-category wc-metadata :intermediate-inputs)
+        nature (filter-wc-metadata-by-category wc-metadata :nature)
+        labor (filter-wc-metadata-by-category wc-metadata :labor)
+        pollutant-demands (filter-wc-metadata-by-category wc-metadata :pollutant-demands)]
+    (do
+      (create-file "wcs.csv" (create-wcs-in-csv num-of-consumer-councils num-goods))
+      (create-file "intermediate_inputs.csv" intermediate-inputs)
+      (create-file "nature.csv" nature)
+      (create-file "labor.csv" labor)
+      (create-file "pollutant_demands.csv" pollutant-demands)
+      )))
 
 ; (pprint (create-ccs-bulk 30 10 1 1))
