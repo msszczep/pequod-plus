@@ -124,6 +124,36 @@
                                      augment REAL,
                                      PRIMARY KEY (wc_id, intermediate_input_id)
                                    );"
+        nature-prices-table "CREATE TABLE nature_prices (
+                               id INTEGER,
+                               price REAL,
+                               price_delta REAL,
+                               price_delta_to_use REAL,
+                               pd REAL,
+                               supply REAL,
+                               demand REAL,
+                               surplus REAL
+                             );"
+        labor-prices-table "CREATE TABLE labor_prices (
+                               id INTEGER,
+                               price REAL,
+                               price_delta REAL,
+                               price_delta_to_use REAL,
+                               pd REAL,
+                               supply REAL,
+                               demand REAL,
+                               surplus REAL
+                            );"
+        ii-prices-table "CREATE TABLE intermediate_input_prices (
+                           id INTEGER,
+                           price REAL,
+                           price_delta REAL,
+                           price_delta_to_use REAL,
+                           pd REAL,
+                           supply REAL,
+                           demand REAL,
+                           surplus REAL
+                         );"
        ]
     (do
       (jdbc/execute! ds [wcs-table])
@@ -131,6 +161,9 @@
       (jdbc/execute! ds [labor-table])
       (jdbc/execute! ds [pollutant-demands-table])
       (jdbc/execute! ds [intermediate-inputs-table])
+      (jdbc/execute! ds [nature-prices-table])
+      (jdbc/execute! ds [labor-prices-table])
+      (jdbc/execute! ds [ii-prices-table])
     )))
 
 (defn import-data-into-ccs-tables [db]
@@ -150,7 +183,29 @@
     "CREATE INDEX idx_pp_cc_id ON pollutant_permissions(cc_id);"
     "CREATE INDEX idx_pp_pollutant_id ON pollutant_permissions(pollutant_id);"
     "CREATE INDEX idx_ccs ON ccs(id);"
-    "CREATE INDEX id_idx_private_good_prices ON private_good_prices(id)"
+    "CREATE INDEX idx_private_good_prices ON private_good_prices(id)"
+    "CREATE INDEX idx_public_good_prices ON public_good_prices(id)"
+    "CREATE INDEX idx_pollutant_prices ON pollutant_prices(id)"
+    ".quit"))
+
+(defn import-data-into-wcs-tables [db]
+  (shell/sh "sqlite3" db
+    ".mode csv"
+    ".import resources/wcs.csv wcs"
+    ".import resources/nature.csv nature"
+    ".import resources/labor.csv labor"
+    ".import resources/pollutant_demands.csv pollutant_demands"
+    ".import resources/intermediate_inputs.csv intermediate_inputs"
+    "CREATE INDEX idx_nature_wc_id ON nature(wc_id);"
+    "CREATE INDEX idx_nature_nature_id ON nature(nature_id);"
+    "CREATE INDEX idx_labor_wc_id ON labor(wc_id);"
+    "CREATE INDEX idx_labor_labor_id ON labor(labor_id);"
+    "CREATE INDEX idx_pd_wc_id ON pollutant_demands(wc_id);"
+    "CREATE INDEX idx_pd_pollutant_id ON pollutant_demands(pollutant_id);"
+    "CREATE INDEX idx_ii_wc_id ON intermediate_inputs(wc_id);"
+    "CREATE INDEX idx_ii_ii_id ON intermediate_inputs(intermediate_input_id);"
+    "CREATE INDEX idx_wcs ON wcs(id);"
+    "CREATE INDEX id_idx_nature_prices ON nature(id)"
     "CREATE INDEX idx_public_good_prices ON public_good_prices(id)"
     "CREATE INDEX idx_pollutant_prices ON pollutant_prices(id)"
     ".quit"))
@@ -163,6 +218,7 @@
       (p/create-all-wcs-csv-files)
       (create-normalized-ccs-tables ds)
       (create-normalized-wcs-tables ds)
-      (import-data-into-ccs-tables db))))
+      (import-data-into-ccs-tables db)
+      (import-data-into-wcs-tables db))))
 
 ; time lein run -m pequod-plus.datasource
