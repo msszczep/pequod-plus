@@ -96,7 +96,7 @@
           (range 1 (inc num-of-consumer-councils))))
 
 ; prices tables: id, price, price_delta, price_delta_to_use, pd, supply, demand, surplus
-(defn create-prices-in-csv [num-goods]
+(defn create-prices [num-goods]
   (let [price 700
         price-delta-to-use 0.05
         pd-to-use 0.25]
@@ -116,9 +116,9 @@
       (create-file "private_goods.csv" (create-goods-in-csv num-of-consumer-councils num-goods max-exponent-threshold))
       (create-file "public_goods.csv" (create-goods-in-csv num-of-consumer-councils num-goods max-exponent-threshold))
       (create-file "pollutant_permissions.csv" (create-goods-in-csv num-of-consumer-councils num-goods max-exponent-threshold))
-      (create-file "private_good_prices.csv" (create-prices-in-csv num-goods))
-      (create-file "public_good_prices.csv" (create-prices-in-csv num-goods))
-      (create-file "pollutant_prices.csv" (create-prices-in-csv 1)))))
+      (create-file "private_good_prices.csv" (create-prices num-goods))
+      (create-file "public_good_prices.csv" (create-prices num-goods))
+      (create-file "pollutant_prices.csv" (create-prices 1)))))
 
 (defn filter-wc-metadata-by-category [wc-metadata category]
   (->> wc-metadata
@@ -144,6 +144,9 @@
       (create-file "nature.csv" nature)
       (create-file "labor.csv" labor)
       (create-file "pollutant_demands.csv" pollutant-demands)
+      (create-file "nature_prices.csv" (create-prices num-goods))
+      (create-file "labor_prices.csv" (create-prices num-goods))
+      (create-file "intermediate_input_prices.csv" (create-prices num-goods))
       )))
 
 ; (pprint (create-ccs-bulk 30 10 1 1))

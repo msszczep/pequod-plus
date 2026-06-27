@@ -196,6 +196,9 @@
     ".import resources/labor.csv labor"
     ".import resources/pollutant_demands.csv pollutant_demands"
     ".import resources/intermediate_inputs.csv intermediate_inputs"
+    ".import resources/nature_prices.csv nature_prices"
+    ".import resources/labor_prices.csv labor_prices"
+    ".import resources/intermediate_input_prices.csv intermediate_input_prices"
     "CREATE INDEX idx_nature_wc_id ON nature(wc_id);"
     "CREATE INDEX idx_nature_nature_id ON nature(nature_id);"
     "CREATE INDEX idx_labor_wc_id ON labor(wc_id);"
@@ -205,9 +208,9 @@
     "CREATE INDEX idx_ii_wc_id ON intermediate_inputs(wc_id);"
     "CREATE INDEX idx_ii_ii_id ON intermediate_inputs(intermediate_input_id);"
     "CREATE INDEX idx_wcs ON wcs(id);"
-    "CREATE INDEX id_idx_nature_prices ON nature(id)"
-    "CREATE INDEX idx_public_good_prices ON public_good_prices(id)"
-    "CREATE INDEX idx_pollutant_prices ON pollutant_prices(id)"
+    "CREATE INDEX idx_nature_prices ON nature_prices(id)"
+    "CREATE INDEX idx_labor_prices ON labor_prices(id)"
+    "CREATE INDEX idx_ii_prices ON intermediate_input_prices(id)"
     ".quit"))
 
 (defn -main []
