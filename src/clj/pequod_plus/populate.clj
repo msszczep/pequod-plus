@@ -63,18 +63,21 @@
           pollutant-demands (populate-c-and-e wc-id :pollutant-demands production-inputs-pollutants pollutant-exponents)]
             (apply concat (concat (vector intermediate-inputs nature labor pollutant-demands))))))
 
-; TODO: Add Ids
 ; id effort industry product output effort_elasticity
 ; total_factor_productivity  disutility_of_effort_coefficient disutility_of_effort_exponent
 (defn create-wcs-in-csv [num-councils num-goods]
-  (for [multiplying-factor (range 1 (inc (/ num-councils num-goods 3)))
-        industry (range 3)
-        product (range 1 (inc num-goods))]
-    (vector 0 industry product 0
-            (rand-range 0.05 0.1)
-            (rand-range 4 6)
-            1
-            (rand-range 3 4))))
+  (let [wcs (for [multiplying-factor (range 1 (inc (/ num-councils num-goods 3)))
+                  industry (range 3)
+                  product (range 1 (inc num-goods))]
+              (vector 0 industry product 0
+                      (rand-range 0.05 0.1)
+                      (rand-range 4 6)
+                      1
+                      (rand-range 3 4)))]
+    (->> wcs
+         (interleave (range 1 (inc num-councils)))
+         (partition 2)
+         (mapv flatten))))
 
 ; private_goods / public_goods / pollutant_permissions tables: cc_id, good_id, exponent, augment, demand 
 (defn create-goods-in-csv [num-of-consumer-councils num-goods max-exponent-threshold]

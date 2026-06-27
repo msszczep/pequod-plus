@@ -11,4 +11,8 @@ serve:
 	lein figwheel
 
 gen:
-	lein run -m pequod-plus.gen ppex001 > ppex001.cljs
+	rm -rf pequod-csv-test.db ; sudo rm -rf resources/*csv; lein run -m pequod-plus.datasource
+
+#oldgen:
+#	lein run -m pequod-plus.gen ppex001 > ppex001.cljs
+
