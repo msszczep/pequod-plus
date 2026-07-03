@@ -6,19 +6,7 @@
              [clojure.java.io :as io]))
 
 (def globals
-  (atom {:init-private-good-price 700
-         :init-intermediate-price 700
-         :init-labor-price        700
-         :init-nature-price       700
-         :init-public-good-price  700
-         :init-pollutant-price    700
-         :private-goods           100
-         :intermediate-inputs     100
-         :resources               100
-         :labors                  100
-         :public-goods            100
-         :pollutants                1
-         :price-data               {}
+  (atom {:price-data               {}
          :price-delta-data         {}
          :surplus-data             {}
          :supply-data              {}
@@ -86,7 +74,8 @@
   (let [include-pollutants? (:include-pollutants? t)
         ds (:ds t)
         ; _ (println "price-data/keys: " (keys (:price-data t)))
-        wcs (mapv (partial util/proposal ds include-pollutants? (:price-data t)) (:wcs t))
+        wc-ids (mapv :id (jdbc/execute! ds ["select distinct id from wcs order by id" ] {:builder-fn result-set/as-unqualified-lower-maps}))
+        _ (map (partial util/proposal-db ds include-pollutants?) wc-ids)
         ; _ (println "wcs loaded")
         _ (util/consume-process-all-in-db ds include-pollutants?)
         ; _ (util/consume-from-db ds include-pollutants? (t :private-goods) (t :public-good-types) (t :pollutant-types) (t :num-of-ccs) (get-in t [:price-data]))
@@ -280,6 +269,7 @@
       (jdbc/execute! ds [ccs-index])
     )))
 
+; after moving stuff to the database, this is now unnecessary, I think
 (defn setup-improved [t _ experiment]
   (let [intermediate-inputs (vec (range 1 (inc (t :intermediate-inputs))))
         nature-types (vec (range 1 (inc (t :resources))))
@@ -345,7 +335,7 @@
 (defn -main [& ns-to-use]
   (let [keys-to-print [:iteration :color :threshold-report]]
     (do
-      (swap! globals setup-improved globals ns-to-use)
+      #_(swap! globals setup-improved globals ns-to-use)
       (println (clojure.string/join "|" keys-to-print))
       (println (print-csv keys-to-print @globals))
       (while (and (or (empty? (flatten (vals (get @globals :threshold-report))))

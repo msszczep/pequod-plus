@@ -90,7 +90,7 @@
                      effort_elasticity REAL,
                      total_factor_productivity REAL,
                      disutility_of_effort_coefficient INTEGER,
-                     disutilty_of_effort_exponent REAL
+                     disutility_of_effort_exponent REAL
                    );"
         nature-table "CREATE TABLE nature (
                         wc_id INTEGER,

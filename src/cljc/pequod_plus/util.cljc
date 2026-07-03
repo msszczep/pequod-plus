@@ -814,7 +814,8 @@
                       (jdbc/execute! ds ["UPDATE public_good_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" new-delta new-price price-delta-to-use supply demand surplus id-to-use])
                       (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use price-delta-to-use :supply supply :demand demand))
       :pollutants (do 
-                    (jdbc/execute! ds ["UPDATE pollutant_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" new-delta new-price price-delta-to-use supply demand surplus id-to-use])                    (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use price-delta-to-use :supply supply :demand demand))
+                    (jdbc/execute! ds ["UPDATE pollutant_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" new-delta new-price price-delta-to-use supply demand surplus id-to-use])
+                    (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use price-delta-to-use :supply supply :demand demand))
       (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use price-delta-to-use :supply supply :demand demand))))
 
 (defn compute-percent-surplus [supply-list demand-list surplus-list]
@@ -929,6 +930,59 @@
         6 (merge wc (solution-6 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
         7 (merge wc (solution-7 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
         8 (merge wc (solution-8 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
+        9 (merge wc (solution-9 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
+        10 (merge wc (solution-10 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
+        (str "unexpected input-count value: " input-count-r)))))
+
+(defn proposal-db [ds include-pollutants? wc-id]
+  (letfn [(get-prices [ids table-name]
+            (let [placeholders (clojure.string/join "," (repeat (count ids) "?"))
+                  sql (str "select price from " table-name
+                           " where id in (" placeholders ") "
+                           "order by id")]
+              (->> {:builder-fn result-set/as-unqualified-lower-maps}
+                   (jdbc/execute! ds (into [sql] ids))
+                   (mapv :price))))
+          (get-lambda-o [wc]
+            (let [industry (:industry wc)
+                  product (:product wc)]
+              (cond (= 0 industry) (first (get-prices [product] "private_good_prices"))
+                    (= 1 industry) (first (get-prices [product] "intermediate_input_prices"))
+                    (= 2 industry) (first (get-prices [product] "public_good_prices")))))]
+    (let [builder-fn-map {:builder-fn result-set/as-unqualified-lower-maps}
+          wc (first (jdbc/execute! ds ["select industry, product, total_factor_productivity, effort_elasticity, disutility_of_effort_coefficient, disutility_of_effort_exponent from wcs where id = ?" wc-id] builder-fn-map))
+          intermediate-inputs (jdbc/execute! ds ["select * from intermediate_inputs where wc_id = ?" wc-id] builder-fn-map)
+          nature (jdbc/execute! ds ["select * from nature where wc_id = ?" wc-id] builder-fn-map)
+          labor (jdbc/execute! ds ["select * from labor where wc_id = ?" wc-id] builder-fn-map)
+          pollutant-demands (jdbc/execute! ds ["select * from pollutant_demands where wc_id = ?" wc-id] builder-fn-map)
+          input-prices (:intermediate-inputs prices)
+          total-factor-productivity (get wc :total_factor_productivity)
+          effort-elasticity (get wc :effort_elasticity)
+          disutility-of-effort-coefficient (get wc :disutility_of_effort_coefficient)
+          disutility-of-effort-exponent (get wc :disutility_of_effort_exponent)
+          all-goods (if include-pollutants?
+                      (concat intermediate-inputs nature labor pollutant-demands)
+                      (concat intermediate-inputs nature labor))
+          input-count-r (count all-goods)
+          p-i (mapv all-goods :coefficient)
+          intermediate-input-prices-to-use (get-prices (map :coefficient intermediate-inputs) "intermediate_input_prices")
+          nature-prices-to-use (get-prices (map :coefficient nature) "nature_prices")
+          labor-prices-to-use (get-prices (map :coefficient labor) "labor_prices")
+          pollutant-prices-to-use (get-prices [1] "pollutant_prices")
+          ps (if include-pollutants?
+               [intermediate-input-prices-to-use nature-prices-to-use labor-prices-to-use pollutant-prices-to-use]
+               [intermediate-input-prices-to-use nature-prices-to-use labor-prices-to-use])
+          b (mapv all-goods :exponent)
+          λ (get-lambda-o wc)]
+      (condp = input-count-r
+        3 (merge wc (solution-3 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
+        4 (merge wc (solution-4 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
+        5 (merge wc (solution-5 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
+        6 (merge wc (solution-6 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
+        7 (merge wc (solution-7 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
+        8 (merge wc (solution-8 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
+        9 (merge wc (solution-9 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
+        10 (merge wc (solution-10 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
         (str "unexpected input-count value: " input-count-r)))))
 
 ; NB: Watch for pollutant-prices and scaling effects -- i.e., does a price affect all CCs or just one CC?
