@@ -98,6 +98,7 @@
                         exponent REAL,
                         coefficient INT,
                         augment REAL,
+                        quantity REAL,
                         PRIMARY KEY (wc_id, nature_id)
                       );"
         labor-table "CREATE TABLE labor (
@@ -106,6 +107,7 @@
                        exponent REAL,
                        coefficient INT,
                        augment REAL,
+                       quantity REAL,
                        PRIMARY KEY (wc_id, labor_id)
                      );"
         pollutant-demands-table "CREATE TABLE pollutant_demands (
@@ -114,6 +116,7 @@
                                    exponent REAL,
                                    coefficient INT,
                                    augment REAL,
+                                   quantity REAL,
                                    PRIMARY KEY (wc_id, pollutant_id)
                                  );"
         intermediate-inputs-table "CREATE TABLE intermediate_inputs (
@@ -122,6 +125,7 @@
                                      exponent REAL,
                                      coefficient INT,
                                      augment REAL,
+                                     quantity REAL,
                                      PRIMARY KEY (wc_id, intermediate_input_id)
                                    );"
         nature-prices-table "CREATE TABLE nature_prices (
