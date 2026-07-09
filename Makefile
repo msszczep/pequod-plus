@@ -16,3 +16,5 @@ gen:
 #oldgen:
 #	lein run -m pequod-plus.gen ppex001 > ppex001.cljs
 
+connect:
+	python3 -m sqlite3 pequod-csv-test.db

@@ -126,6 +126,15 @@
                                 nil)]
     [intermediate-input-quantities nature-quantities labor-quantities pollutant-quantities]))
 
+(defn update-output-effort [ds output effort wc-id]
+  (jdbc/execute! ds ["UPDATE wcs SET output = ?, effort = ? WHERE id = ?;" output effort wc-id]))
+
+(defn update-production-quantities [ds table field production-quantities]
+  (let [n (count production-quantities)]
+    (doseq [i (range 1 (inc n))]
+      (let [s (str "UPDATE " table " SET quantity = " (nth production-quantities (dec i)) " where wc_id = " wc-id " AND " field " = " i)]
+        (jdbc/execute! ds [s])))))
+
 (defn solution-3 [a s c k ps b λ p-i include-pollutants?]
   (let [[b1 b2 b3] (flatten b)
         [p1 p2 p3] (flatten ps)
@@ -159,7 +168,7 @@
        :nature-quantities nature-qs
        :labor-quantities labor-qs})))
 
-(defn solution-4 [a s c k ps b λ p-i include-pollutants?]
+(defn solution-db-4 [a s c k ps b λ p-i include-pollutants? wc-id ds]
   (let [[b1 b2 b3 b4] (flatten b)
         [p1 p2 p3 p4] (flatten ps)
         log-a (Math/log a)
@@ -199,20 +208,15 @@
         x4 (Math/pow Math/E (/ (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 (* c log-b4) (- (* k log-b4)) (* b1 k log-b4) (* b2 k log-b4) (* b3 k log-b4) c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 (- (* c log-p4)) k-log-p4 (- (* b1 k-log-p4)) (- (* b2 k-log-p4)) (- (* b3 k-log-p4)) (* c log-s) (- k-log-λ)) denominator))
         effort (Math/pow Math/E (/ (+ (- (* log-a)) (- (* b1 log-b1)) (- (* b2 log-b2)) (- (* b3 log-b3)) (- (* b4 log-b4)) (- (* log-c)) (* b1 log-c) (* b2 log-c) (* b3 log-c) (* b4 log-c) (* log-k) (- (* b1 log-k)) (- (* b2 log-k)) (- (* b3 log-k)) (- (* b4 log-k)) (* b1 log-p1) (* b2 log-p2) (* b3 log-p3) (* b4 log-p4) log-s (- (* b1 log-s)) (- (* b2 log-s)) (- (* b3 log-s)) (- (* b4 log-s)) (- log-λ)) denominator))
         [intermediate-input-qs nature-qs labor-qs pollutant-qs] (allot-production-quantities p-i [x1 x2 x3 x4] include-pollutants?)]
-    (if include-pollutants? 
-     {:output output
-      :effort effort
-      :intermediate-input-quantities intermediate-input-qs
-      :nature-quantities nature-qs
-      :labor-quantities labor-qs
-      :pollutant-quantities pollutant-qs}
-     {:output output
-      :effort effort
-      :intermediate-input-quantities intermediate-input-qs
-      :nature-quantities nature-qs
-      :labor-quantities labor-qs})))
+    (do
+      (update-output-effort ds output effort wc-id)
+      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" intermediate-input-qs)
+      (update-production-quantities ds "nature" "nature_id" nature-qs)
+      (update-production-quantities ds "labor" "labor_id" labor-qs)
+      (if include-pollutants?
+        (update-production-quantities ds "pollutant_demands" "pollutant_id" pollutant-qs)))))
 
-(defn solution-5 [a s c k ps b λ p-i include-pollutants?]
+(defn solution-db-5 [a s c k ps b λ p-i include-pollutants? wc-id ds]
   (let [[b1 b2 b3 b4 b5] (flatten b)
         [p1 p2 p3 p4 p5] (flatten ps)
         log-a (Math/log a)
@@ -258,20 +262,15 @@
         x5 (Math/pow Math/E (/ (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 (* c log-b5) (- (* k log-b5)) (* b1 k log-b5) (* b2 k log-b5) (* b3 k log-b5) (* b4 k log-b5) c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 (- (* c log-p5)) k-log-p5 (- (* b1 k-log-p5)) (- (* b2 k-log-p5)) (- (* b3 k-log-p5)) (- (* b4 k-log-p5)) (* c log-s) (- k-log-λ)) denominator))
         effort (Math/pow Math/E (/ (+ (- ( * log-a)) (- (* b1 log-b1)) (- (* b2 log-b2)) (- (* b3 log-b3)) (- (* b4 log-b4)) (- (* b5 log-b5)) (* b1 log-p1) (* b2 log-p2) (* b3 log-p3) (* b4 log-p4) (* b5 log-p5) (- (* b1 log-λ)) (- (* b2 log-λ)) (- (* b3 log-λ)) (- (* b4 log-λ)) (- (* b5 log-λ)) (/ (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 (* c log-s) (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ))) denominator) (- (/ (* b1 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 (* c log-s) (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)))) denominator)) (- (/ (* b2 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 (* c log-s) (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)))) denominator)) (- (/ (* b3 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 (* c log-s) (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)))) denominator)) (- (/ (* b4 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 (* c log-s) (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)))) denominator)) (- (/ (* b5 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 (* c log-s) (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)))) denominator))) c))
         [intermediate-input-qs nature-qs labor-qs pollutant-qs] (allot-production-quantities p-i [x1 x2 x3 x4 x5] include-pollutants?)]
-    (if include-pollutants?
-     {:output output
-      :effort effort
-      :intermediate-input-quantities intermediate-input-qs
-      :nature-quantities nature-qs
-      :labor-quantities labor-qs
-      :pollutant-quantities pollutant-qs}
-     {:output output
-      :effort effort
-      :intermediate-input-quantities intermediate-input-qs
-      :nature-quantities nature-qs
-      :labor-quantities labor-qs})))
+    (do
+      (update-output-effort ds output effort wc-id)
+      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" intermediate-input-qs)
+      (update-production-quantities ds "nature" "nature_id" nature-qs)
+      (update-production-quantities ds "labor" "labor_id" labor-qs)
+      (if include-pollutants?
+        (update-production-quantities ds "pollutant_demands" "pollutant_id" pollutant-qs)))))
 
-(defn solution-6 [a s c k ps b λ p-i include-pollutants?]
+(defn solution-db-6 [a s c k ps b λ p-i include-pollutants? wc-id ds]
   (let [[b1 b2 b3 b4 b5 b6] (flatten b)
         [p1 p2 p3 p4 p5 p6] (flatten ps)
         log-a (Math/log a)
@@ -324,20 +323,15 @@
         x6 (Math/pow Math/E (/ (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 (* c log-b6) (- (* k log-b6)) (* b1 k log-b6) (* b2 k log-b6) (* b3 k log-b6) (* b4 k log-b6) (* b5 k log-b6) c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 (- (* c log-p6)) k-log-p6 (- (* b1 k-log-p6)) (- (* b2 k-log-p6)) (- (* b3 k-log-p6)) (- (* b4 k-log-p6)) (- (* b5 k-log-p6)) c-log-s k-log-λ) denominator))
         effort (Math/pow Math/E (/ (+ (- log-a) (- (* b1 log-b1)) (- (* b2 log-b2)) (- (* b3 log-b3)) (- (* b4 log-b4)) (- (* b5 log-b5)) (- (* b6 log-b6)) (- (* log-c)) (* b1 log-c) (* b2 log-c) (* b3 log-c) (* b4 log-c) (* b5 log-c) (* b6 log-c) (* log-k) (- (* b1 log-k)) (- (* b2 log-k)) (- (* b3 log-k)) (- (* b4 log-k)) (- (* b5 log-k)) (- (* b6 log-k)) (* b1 log-p1) (* b2 log-p2) (* b3 log-p3) (* b4 log-p4) (* b5 log-p5) (* b6 log-p6) log-s (- (* b1 log-s)) (- (* b2 log-s)) (- (* b3 log-s)) (- (* b4 log-s)) (- (* b5 log-s)) (- (* b6 log-s)) (- log-λ)) denominator))
         [intermediate-input-qs nature-qs labor-qs pollutant-qs] (allot-production-quantities p-i [x1 x2 x3 x4 x5 x6] include-pollutants?)]
-    (if include-pollutants?
-     {:output output
-      :effort effort
-      :intermediate-input-quantities intermediate-input-qs
-      :nature-quantities nature-qs
-      :labor-quantities labor-qs
-      :pollutant-quantities pollutant-qs}
-     {:output output
-      :effort effort
-      :intermediate-input-quantities intermediate-input-qs
-      :nature-quantities nature-qs
-      :labor-quantities labor-qs})))
+    (do
+      (update-output-effort ds output effort wc-id)
+      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" intermediate-input-qs)
+      (update-production-quantities ds "nature" "nature_id" nature-qs)
+      (update-production-quantities ds "labor" "labor_id" labor-qs)
+      (if include-pollutants?
+        (update-production-quantities ds "pollutant_demands" "pollutant_id" pollutant-qs)))))
 
-(defn solution-7 [a s c k ps b λ p-i include-pollutants?]
+(defn solution-db-7 [a s c k ps b λ p-i include-pollutants? wc-id ds]
   (let [[b1 b2 b3 b4 b5 b6 b7] (flatten b)
         [p1 p2 p3 p4 p5 p6 p7] (flatten ps)
         log-a (Math/log a)
@@ -397,20 +391,15 @@
         x7 (Math/pow Math/E (/ (+ k-log-a (* b1 k log-b7) (* b2 k log-b7) (* b3 k log-b7) (* b4 k log-b7) (* b5 k log-b7) (* b6 k log-b7) (* c log-b7) (- (* k log-b7)) b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 c-log-c c-log-k (- (* b1 k-log-p7)) (- (* b2 k-log-p7)) (- (* b3 k-log-p7)) (- (* b4 k-log-p7)) (- (* b5 k-log-p7)) (- (* b6 k-log-p7)) k-log-p7 (- (* c log-p7)) b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 c-log-s minus-k-log-λ) denominator))
         effort (Math/pow Math/E (/ (+ (- (* log-a)) (- (* b1 log-b1)) (- (* b2 log-b2)) (- (* b3 log-b3)) (- (* b4 log-b4)) (- (* b5 log-b5)) (- (* b6 log-b6)) (- (* b7 log-b7)) (* b1 log-p1) (* b2 log-p2) (* b3 log-p3) (* b4 log-p4) (* b5 log-p5) (* b6 log-p6) (* b7 log-p7) (- (* b1 log-λ)) (- (* b2 log-λ)) (- (* b3 log-λ)) (- (* b4 log-λ)) (- (* b5 log-λ)) (- (* b6 log-λ)) (- (* b7 log-λ)) (/ (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 c-log-s (- (* c log-λ)) (- (* b1 k-log-λ)) (- (* b2 k-log-λ)) (- (* b3 k-log-λ)) (- (* b4 k-log-λ)) (- (* b5 k-log-λ)) (- (* b6 k-log-λ)) (- (* b7 k-log-λ))) denominator) (- (/ (* b1 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 c-log-s (- (* c log-λ)) (- (* b1 k-log-λ)) (- (* b2 k-log-λ)) (- (* b3 k-log-λ)) (- (* b4 k-log-λ)) (- (* b5 k-log-λ)) (- (* b6 k-log-λ)) (- (* b7 k-log-λ)))) denominator)) (- (/ (* b2 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 c-log-s (- (* c log-λ)) (- (* b1 k-log-λ)) (- (* b2 k-log-λ)) (- (* b3 k-log-λ)) (- (* b4 k-log-λ)) (- (* b5 k-log-λ)) (- (* b6 k-log-λ)) (- (* b7 k-log-λ)))) denominator)) (- (/ (* b3 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 c-log-s (- (* c log-λ)) (- (* b1 k-log-λ)) (- (* b2 k-log-λ)) (- (* b3 k-log-λ)) (- (* b4 k-log-λ)) (- (* b5 k-log-λ)) (- (* b6 k-log-λ)) (- (* b7 k-log-λ)))) denominator)) (- (/ (* b4 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 c-log-s (- (* c log-λ)) (- (* b1 k-log-λ)) (- (* b2 k-log-λ)) (- (* b3 k-log-λ)) (- (* b4 k-log-λ)) (- (* b5 k-log-λ)) (- (* b6 k-log-λ)) (- (* b7 k-log-λ)))) denominator)) (- (/ (* b5 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 c-log-s (- (* c log-λ)) (- (* b1 k-log-λ)) (- (* b2 k-log-λ)) (- (* b3 k-log-λ)) (- (* b4 k-log-λ)) (- (* b5 k-log-λ)) (- (* b6 k-log-λ)) (- (* b7 k-log-λ)))) denominator)) (- (/ (* b6 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 c-log-s (- (* c log-λ)) (- (* b1 k-log-λ)) (- (* b2 k-log-λ)) (- (* b3 k-log-λ)) (- (* b4 k-log-λ)) (- (* b5 k-log-λ)) (- (* b6 k-log-λ)) (- (* b7 k-log-λ)))) denominator)) (- (/ (* b7 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 c-log-s (- (* c log-λ)) (- (* b1 k-log-λ)) (- (* b2 k-log-λ)) (- (* b3 k-log-λ)) (- (* b4 k-log-λ)) (- (* b5 k-log-λ)) (- (* b6 k-log-λ)) (- (* b7 k-log-λ)))) denominator))) c))
         [intermediate-input-qs nature-qs labor-qs pollutant-qs] (allot-production-quantities p-i [x1 x2 x3 x4 x5 x6 x7] include-pollutants?)]
-    (if include-pollutants?
-     {:output output
-      :effort effort
-      :intermediate-input-quantities intermediate-input-qs
-      :nature-quantities nature-qs
-      :labor-quantities labor-qs
-      :pollutant-quantities pollutant-qs}
-     {:output output
-      :effort effort
-      :intermediate-input-quantities intermediate-input-qs
-      :nature-quantities nature-qs
-      :labor-quantities labor-qs})))
+    (do
+      (update-output-effort ds output effort wc-id)
+      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" intermediate-input-qs)
+      (update-production-quantities ds "nature" "nature_id" nature-qs)
+      (update-production-quantities ds "labor" "labor_id" labor-qs)
+      (if include-pollutants?
+        (update-production-quantities ds "pollutant_demands" "pollutant_id" pollutant-qs)))))
 
-(defn solution-8 [a s c k ps b λ p-i include-pollutants?]
+(defn solution-db-8 [a s c k ps b λ p-i include-pollutants? wc-id ds]
   (let [[b1 b2 b3 b4 b5 b6 b7 b8] (flatten b)
         [p1 p2 p3 p4 p5 p6 p7 p8] (flatten ps)
         log-a (Math/log a)
@@ -476,20 +465,15 @@
         x8 (Math/pow Math/E (/ (+ k-log-a (* b1 k log-b8) (* b2 k log-b8) (* b3 k log-b8) (* b4 k log-b8) (* b5 k log-b8) (* b6 k log-b8) (* b7 k log-b8) (* c log-b8) (- (* k log-b8)) b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 c-log-c c-log-k (- (* b1 k-log-p8)) (- (* b2 k-log-p8)) (- (* b3 k-log-p8)) (- (* b4 k-log-p8)) (- (* b5 k-log-p8)) (- (* b6 k-log-p8)) (- (* b7 k-log-p8)) k-log-p8 (- (* c log-p8)) b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 c-log-s minus-k-log-λ) denominator))
         effort (Math/pow Math/E (/ (+ (- (* log-a)) (- (* b1 log-b1)) (- (* b2 log-b2)) (- (* b3 log-b3)) (- (* b4 log-b4)) (- (* b5 log-b5)) (- (* b6 log-b6)) (- (* b7 log-b7)) (- (* b8 log-b8)) (- (* log-c)) (* b1 log-c) (* b2 log-c) (* b3 log-c) (* b4 log-c) (* b5 log-c) (* b6 log-c) (* b7 log-c) (* b8 log-c) (* log-k) (* b1 log-k) (* b2 log-k) (* b3 log-k) (* b4 log-k) (* b5 log-k) (* b6 log-k) (* b7 log-k) (* b8 log-k) (* b1 log-p1) (* b2 log-p2) (* b3 log-p3) (* b4 log-p4) (* b5 log-p5) (* b6 log-p6) (* b7 log-p7) (* b8 log-p8) (* log-s) (* b1 log-s) (* b2 log-s) (* b3 log-s) (* b4 log-s) (* b5 log-s) (* b6 log-s) (* b7 log-s) (* b8 log-s) (- log-λ)) denominator))
         [intermediate-input-qs nature-qs labor-qs pollutant-qs] (allot-production-quantities p-i [x1 x2 x3 x4 x5 x6 x7 x8] include-pollutants?)]
-    (if include-pollutants?
-     {:output output
-      :effort effort
-      :intermediate-input-quantities intermediate-input-qs
-      :nature-quantities nature-qs
-      :labor-quantities labor-qs
-      :pollutant-quantities pollutant-qs}
-     {:output output
-      :effort effort
-      :intermediate-input-quantities intermediate-input-qs
-      :nature-quantities nature-qs
-      :labor-quantities labor-qs})))
+    (do
+      (update-output-effort ds output effort wc-id)
+      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" intermediate-input-qs)
+      (update-production-quantities ds "nature" "nature_id" nature-qs)
+      (update-production-quantities ds "labor" "labor_id" labor-qs)
+      (if include-pollutants?
+        (update-production-quantities ds "pollutant_demands" "pollutant_id" pollutant-qs)))))
 
-(defn solution-9 [a s c k ps b λ p-i include-pollutants?]
+(defn solution-db-9 [a s c k ps b λ p-i include-pollutants? wc-id ds]
   (let [[b1 b2 b3 b4 b5 b6 b7 b8 b9] (flatten b)
         [p1 p2 p3 p4 p5 p6 p7 p8 p9] (flatten ps)
         log-a (Math/log a)
@@ -561,20 +545,15 @@
         x9 (Math/pow Math/E (/ (+ k-log-a (* b1 k log-b9) (* b2 k log-b9) (* b3 k log-b9) (* b4 k log-b9) (* b5 k log-b9) (* b6 k log-b9) (* b7 k log-b9) (* b8 k log-b9) (* c log-b9) (- (* k log-b9)) b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 c-log-c c-log-k (- (* b1 k-log-p9)) (- (* b2 k-log-p9)) (- (* b3 k-log-p9)) (- (* b4 k-log-p9)) (- (* b5 k-log-p9)) (- (* b6 k-log-p9)) (- (* b7 k-log-p9)) (- (* b8 k-log-p9)) (* k-log-p9) (- (* c log-p9)) b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 c-log-s minus-k-log-λ) denominator)) 
         effort (Math/pow Math/E (/ (+ (- (* log-a)) (- (* b1 log-b1)) (- (* b2 log-b2)) (- (* b3 log-b3)) (- (* b4 log-b4)) (- (* b5 log-b5)) (- (* b6 log-b6)) (- (* b7 log-b7)) (- (* b8 log-b8)) (- (* b9 log-b9)) (* b1 log-p1) (* b2 log-p2) (* b3 log-p3) (* b4 log-p4) (* b5 log-p5) (* b6 log-p6) (* b7 log-p7) (* b8 log-p8) (* b9 log-p9) (- (* b1 log-λ)) (- (* b2 log-λ)) (- (* b3 log-λ)) (- (* b4 log-λ)) (- (* b5 log-λ)) (- (* b6 log-λ)) (- (* b7 log-λ)) (- (* b8 log-λ)) (- (* b9 log-λ)) (/ (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)) (- (* b6 k log-λ)) (- (* b7 k log-λ)) (- (* b8 k log-λ)) (- (* b9 k log-λ))) denominator) (- (/ (* b1 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)) (- (* b6 k log-λ)) (- (* b7 k log-λ)) (- (* b8 k log-λ)) (- (* b9 k log-λ)))) denominator)) (- (/ (* b2 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)) (- (* b6 k log-λ)) (- (* b7 k log-λ)) (- (* b8 k log-λ)) (- (* b9 k log-λ)))) denominator)) (- (/ (* b3 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)) (- (* b6 k log-λ)) (- (* b7 k log-λ)) (- (* b8 k log-λ)) (- (* b9 k log-λ)))) denominator)) (- (/ (* b4 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)) (- (* b6 k log-λ)) (- (* b7 k log-λ)) (- (* b8 k log-λ)) (- (* b9 k log-λ)))) denominator)) (- (/ (* b5 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)) (- (* b6 k log-λ)) (- (* b7 k log-λ)) (- (* b8 k log-λ)) (- (* b9 k log-λ)))) denominator)) (- (/ (* b6 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)) (- (* b6 k log-λ)) (- (* b7 k log-λ)) (- (* b8 k log-λ)) (- (* b9 k log-λ)))) denominator)) (- (/ (* b7 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)) (- (* b6 k log-λ)) (- (* b7 k log-λ)) (- (* b8 k log-λ)) (- (* b9 k log-λ)))) denominator)) (- (/ (* b8 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)) (- (* b6 k log-λ)) (- (* b7 k log-λ)) (- (* b8 k log-λ)) (- (* b9 k log-λ)))) denominator)) (- (/ (* b9 (+ k-log-a b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)) (- (* b4 k log-λ)) (- (* b5 k log-λ)) (- (* b6 k log-λ)) (- (* b7 k log-λ)) (- (* b8 k log-λ)) (- (* b9 k log-λ)))) denominator))) c))
         [intermediate-input-qs nature-qs labor-qs pollutant-qs] (allot-production-quantities p-i [x1 x2 x3 x4 x5 x6 x7 x8 x9] include-pollutants?)]
-    (if include-pollutants?
-     {:output output
-      :effort effort
-      :intermediate-input-quantities intermediate-input-qs
-      :nature-quantities nature-qs
-      :labor-quantities labor-qs
-      :pollutant-quantities pollutant-qs}
-     {:output output
-      :effort effort
-      :intermediate-input-quantities intermediate-input-qs
-      :nature-quantities nature-qs
-      :labor-quantities labor-qs})))
+    (do
+      (update-output-effort ds output effort wc-id)
+      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" intermediate-input-qs)
+      (update-production-quantities ds "nature" "nature_id" nature-qs)
+      (update-production-quantities ds "labor" "labor_id" labor-qs)
+      (if include-pollutants?
+        (update-production-quantities ds "pollutant_demands" "pollutant_id" pollutant-qs)))))
 
-(defn solution-10 [a s c k ps b λ p-i include-pollutants?]
+(defn solution-db-10 [a s c k ps b λ p-i include-pollutants? wc-id ds]
   (let [[b1 b2 b3 b4 b5 b6 b7 b8 b9 b10] (flatten b)
         [p1 p2 p3 p4 p5 p6 p7 p8 p9 p10] (flatten ps)
         log-a (Math/log a)
@@ -642,18 +621,13 @@
         x10 (Math/pow Math/E (/ (+ k-log-a (* b1 k log-b10) (* b2 k log-b10) (* b3 k log-b10) (* b4 k log-b10) (* b5 k log-b10) (* b6 k log-b10) (* b7 k log-b10) (* b8 k log-b10) (* b9 k log-b10) (* c log-b10) (- (* k log-b10)) b1-k-log-b1 b2-k-log-b2 b3-k-log-b3 b4-k-log-b4 b5-k-log-b5 b6-k-log-b6 b7-k-log-b7 b8-k-log-b8 b9-k-log-b9 c-log-c c-log-k (- (* b1 k log-p10)) (- (* b2 k log-p10)) (- (* b3 k log-p10)) (- (* b4 k log-p10)) (- (* b5 k log-p10)) (- (* b6 k log-p10)) (- (* b7 k log-p10)) (- (* b8 k log-p10)) (- (* b9 k log-p10)) (* k log-p10) (- (* c log-p10)) b1-k-log-p1 b2-k-log-p2 b3-k-log-p3 b4-k-log-p4 b5-k-log-p5 b6-k-log-p6 b7-k-log-p7 b8-k-log-p8 b9-k-log-p9 c-log-s minus-k-log-λ) denominator))
         effort (Math/pow Math/E (/ (+ (- log-a) (- (* b1 log-b1)) (- (* b2 log-b2)) (- (* b3 log-b3)) (- (* b4 log-b4)) (- (* b5 log-b5)) (- (* b6 log-b6)) (- (* b7 log-b7)) (- (* b8 log-b8)) (- (* b9 log-b9)) (- (* b10 log-b10)) (- (* log-c)) (* b1 log-c) (* b2 log-c) (* b3 log-c) (* b4 log-c) (* b5 log-c) (* b6 log-c) (* b7 log-c) (* b8 log-c) (* b9 log-c) (* b10 log-c) (* log-k) (* b1 log-k) (* b2 log-k) (* b3 log-k) (* b4 log-k) (* b5 log-k) (* b6 log-k) (* b7 log-k) (* b8 log-k) (* b9 log-k) (* b10 log-k) (* b1 log-p1) (* b2 log-p2) (* b3 log-p3) (* b4 log-p4) (* b5 log-p5) (* b6 log-p6) (* b7 log-p7) (* b8 log-p8) (* b9 log-p9) (* b10 log-p10) (* log-s) (* b1 log-s) (* b2 log-s) (* b3 log-s) (* b4 log-s) (* b5 log-s) (* b6 log-s) (* b7 log-s) (* b8 log-s) (* b9 log-s) (* b10 log-s) (- log-λ)) denominator))
          [intermediate-input-qs nature-qs labor-qs pollutant-qs] (allot-production-quantities p-i [x1 x2 x3 x4 x5 x6 x7 x8 x9 x10] include-pollutants?)]
-    (if include-pollutants?
-      {:output output
-       :effort effort
-       :intermediate-input-quantities intermediate-input-qs
-       :nature-quantities nature-qs
-       :labor-quantities labor-qs
-       :pollutant-quantities pollutant-qs}
-      {:output output
-       :effort effort
-       :intermediate-input-quantities intermediate-input-qs
-       :nature-quantities nature-qs
-       :labor-quantities labor-qs})))
+    (do
+      (update-output-effort ds output effort wc-id)
+      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" intermediate-input-qs)
+      (update-production-quantities ds "nature" "nature_id" nature-qs)
+      (update-production-quantities ds "labor" "labor_id" labor-qs)
+      (if include-pollutants?
+        (update-production-quantities ds "pollutant_demands" "pollutant_id" pollutant-qs)))))
 
 (defn get-delta [price-delta price-delta-datum]
   (->> price-delta-datum
@@ -975,14 +949,14 @@
           b (mapv all-goods :exponent)
           λ (get-lambda-o wc)]
       (condp = input-count-r
-        3 (merge wc (solution-3 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
-        4 (merge wc (solution-4 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
-        5 (merge wc (solution-5 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
-        6 (merge wc (solution-6 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
-        7 (merge wc (solution-7 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
-        8 (merge wc (solution-8 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
-        9 (merge wc (solution-9 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
-        10 (merge wc (solution-10 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants?))
+        3 (solution-db-3 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants? wc-id ds)
+        4 (solution-db-4 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants? wc-id ds)
+        5 (solution-db-5 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants? wc-id ds)
+        6 (solution-db-6 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants? wc-id ds)
+        7 (solution-db-7 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants? wc-id ds)
+        8 (solution-db-8 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants? wc-id ds)
+        9 (solution-db-9 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants? wc-id ds)
+        10 (solution-db-10 total-factor-productivity disutility-of-effort-coefficient effort-elasticity disutility-of-effort-exponent ps b λ p-i include-pollutants? wc-id ds)
         (str "unexpected input-count value: " input-count-r)))))
 
 ; NB: Watch for pollutant-prices and scaling effects -- i.e., does a price affect all CCs or just one CC?
