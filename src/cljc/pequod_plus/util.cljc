@@ -714,83 +714,77 @@
                                             flatten
                                             (reduce +)))
         surplus (- supply demand)
-        price-delta-to-use (- 1.05 (Math/pow 0.5 (/ (Math/abs (* 2 surplus)) (+ demand supply))))
+        newly-computed-price-delta (- 1.05 (Math/pow 0.5 (/ (Math/abs (* 2 surplus)) (+ demand supply))))
         new-delta (force-to-one (get-delta price-delta-to-use (get price-delta-data type-to-use 1)))
         new-price (cond (pos? surplus) (* (- 1 new-delta) (:price price-datum))
                         (neg? surplus) (* (+ 1 new-delta) (:price price-datum))
                         :else (:price price-datum))]
     (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use price-delta-to-use :supply supply :demand demand)))
 
-(defn compute-surpluses-prices-improved [ds wcs num-of-ccs pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum natural-resources-supply labor-supply price-delta-data type-to-use price-datum]
-  (let [id-to-use (:id price-datum)
+(defn normalize-category [cat]
+  (-> cat
+      str
+      (clojure.string/replace "-" "_")
+      (clojure.string/replace ":" "")))
+
+(defn run-query [ds q-array k]
+  (->> {:builder-fn result-set/as-unqualified-lower-maps}
+       (jdbc/execute-one! ds q-array)
+       k))
+
+(defn compute-surpluses-prices-improved [ds private-goods-demand-sum public-goods-demand-sum pollutants-demand-sum id-to-use type-to-use]
+  (let [price (run-query ds [(str "select price from " (normalize-category type-to-use) " where id = ?") id-to-use] :price)
+        num-of-ccs (run-query ds ["select count(*) as num from ccs"] :num)
         supply (condp = type-to-use
-                           :private-goods (->> wcs
-                                               (filter #(and (= 0 (get % :industry))
-                                                             (= id-to-use
-                                                                (get % :product))))
-                                               (map :output)
-                                               (reduce +))
-                           :intermediate-inputs (->> wcs
-                                                    (filter #(and (= 1 (get % :industry))
-                                                                  (= id-to-use
-                                                                     (get % :product))))
-                                                    (mapv :output)
-                                                    (reduce +))
-                           :nature (nth natural-resources-supply (dec id-to-use))
-                           :labor  (nth labor-supply (dec id-to-use))
-                           :public-goods (->> wcs
-                                              (filter #(and (= 2 (get % :industry))
-                                                            (= id-to-use
-                                                               (get % :product))))
-                                              (map :output)
-                                              (reduce +)) 
+                           :private-goods
+                             (run-query ds ["select sum(output) as sum from wcs where industry = 0 and product = ?" id-to-use] :sum)
+                           :intermediate-inputs
+                             (run-query ds ["select sum(output) as sum from wcs where industry = 1 and product = ?" id-to-use] :sum)
+                           :nature
+                             (run-query ds ["select supply from natural_resources_supply where id = ?" id-to-use] :supply)
+                           :labor
+                             (run-query ds ["select supply from labor_supply where id = ?" id-to-use] :supply)
+                           :public-goods
+                             (run-query ds ["select sum(output) as sum from wcs where industry = 2 and product = ?" id-to-use] :sum)
                            :pollutants (/ pollutants-demand-sum num-of-ccs))
         demand (condp = type-to-use
                            :private-goods private-goods-demand-sum
-                           :intermediate-inputs (->> wcs
-                                                     (mapv #(select-keys % [:intermediate-inputs :intermediate-input-quantities]))
-                                                     (filter (fn [x] (contains? (set (mapv :coefficient (:intermediate-inputs x))) id-to-use)))
-                                                     (mapv (partial get-filtered-input-quantities id-to-use))
-                                                     flatten
-                                                     (reduce +)) 
-                           :nature (->> wcs
-                                        (mapv #(select-keys % [:nature :nature-quantities]))
-                                        (filter (fn [x] (contains? (set (mapv :coefficient (:nature x))) id-to-use)))
-                                        (mapv (partial get-filtered-input-quantities id-to-use))
-                                        flatten
-                                        (reduce +))
-                           :labor (->> wcs
-                                        (mapv #(select-keys % [:labor :labor-quantities]))
-                                        (filter (fn [x] (contains? (set (mapv :coefficient (:labor x))) id-to-use)))
-                                        (mapv (partial get-filtered-input-quantities id-to-use))
-                                        flatten
-                                        (reduce +))
+                           :intermediate-inputs
+                             (run-query ds ["select sum(quantity) as sum from intermediate_inputs where coefficient = ?" id-to-use] :sum)
+                           :nature
+                             (run-query ds ["select sum(quantity) as sum from nature where coefficient = ?" id-to-use] :sum)
+                           :labor
+                             (run-query ds ["select sum(quantity) as sum from labor where coefficient = ?" id-to-use] :sum)
                            :public-goods (/ public-goods-demand-sum num-of-ccs)
-                           :pollutants (->> wcs
-                                            (mapv #(select-keys % [:pollutants :pollutant-quantities]))
-                                            (filter (fn [x] (contains? (set (mapv :coefficient (:pollutants x))) id-to-use)))
-                                            (mapv (partial get-filtered-input-quantities id-to-use))
-                                            flatten
-                                            (reduce +)))
+                           :pollutants
+                             (run-query ds ["select sum(quantity) as sum from pollutant_demands where coefficient = ?" id-to-use] :sum))
         surplus (- supply demand)
-        price-delta-to-use (- 1.05 (Math/pow 0.5 (/ (Math/abs (* 2 surplus)) (+ demand supply))))
-        new-delta (force-to-one (get-delta price-delta-to-use (get price-delta-data type-to-use 1)))
-        new-price (cond (pos? surplus) (* (- 1 new-delta) (:price price-datum))
-                        (neg? surplus) (* (+ 1 new-delta) (:price price-datum))
-                        :else (:price price-datum))
-        ; _ (println [type-to-use new-delta new-price price-delta-to-use supply demand surplus id-to-use])
+        newly-computed-price-delta (- 1.05 (Math/pow 0.5 (/ (Math/abs (* 2 surplus)) (+ demand supply))))
+        new-delta (force-to-one (get-delta newly-computed-price-delta price))
+        new-price (cond (pos? surplus) (* (- 1 new-delta) price)
+                        (neg? surplus) (* (+ 1 new-delta) price)
+                        :else price)
         ]
     (case type-to-use
-      :private-goods (do 
-                       (jdbc/execute! ds ["UPDATE private_good_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" new-delta new-price price-delta-to-use supply demand surplus id-to-use])
-                       (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use price-delta-to-use :supply supply :demand demand))
-      :public-goods (do 
-                      (jdbc/execute! ds ["UPDATE public_good_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" new-delta new-price price-delta-to-use supply demand surplus id-to-use])
-                      (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use price-delta-to-use :supply supply :demand demand))
-      :pollutants (do 
-                    (jdbc/execute! ds ["UPDATE pollutant_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" new-delta new-price price-delta-to-use supply demand surplus id-to-use])
-                    (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use price-delta-to-use :supply supply :demand demand))
-      (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use price-delta-to-use :supply supply :demand demand))))
+      :private-goods
+        (jdbc/execute! ds ["UPDATE private_good_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" 
+                            new-delta new-price newly-computed-price-delta supply demand surplus id-to-use])
+      :intermediate-inputs
+        (jdbc/execute! ds ["UPDATE intermediate_input_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" 
+                            new-delta new-price newly-computed-price-delta supply demand surplus id-to-use])
+      :nature
+        (jdbc/execute! ds ["UPDATE nature_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" 
+                            new-delta new-price newly-computed-price-delta supply demand surplus id-to-use])
+      :labor
+        (jdbc/execute! ds ["UPDATE labor_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" 
+                            new-delta new-price newly-computed-price-delta supply demand surplus id-to-use])
+      :public-goods
+        (jdbc/execute! ds ["UPDATE public_good_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" 
+                            new-delta new-price newly-computed-price-delta supply demand surplus id-to-use])
+      :pollutants
+         (jdbc/execute! ds ["UPDATE pollutant_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" 
+                             new-delta new-price newly-computed-price-delta supply demand surplus id-to-use])
+      )))
 
 (defn compute-percent-surplus [supply-list demand-list surplus-list]
   (let [averaged-s-and-d (->> (interleave (flatten supply-list)
@@ -818,17 +812,25 @@
         price-updates (mapv (fn [type-to-use] (mapv (partial compute-surpluses-prices wcs ccs natural-resources-supply labor-supply price-delta-data type-to-use) (get-in price-data [type-to-use]))) categories)]
      (zipmap categories price-updates)))
 
-(defn update-surpluses-prices-improved [ds wcs num-of-ccs pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum natural-resources-supply labor-supply price-data price-delta-data include-pollutants?]
+(defn update-surpluses-prices-improved [ds private-goods-demand-sum public-goods-demand-sum pollutants-demand-sum include-pollutants?]
   (let [categories (if include-pollutants?
                      [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
                      [:private-goods :intermediate-inputs :nature :labor :public-goods])
-        price-updates (mapv (fn [type-to-use] (mapv (partial compute-surpluses-prices-improved ds wcs num-of-ccs pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum natural-resources-supply labor-supply price-delta-data type-to-use) (get-in price-data [type-to-use]))) categories)]
-     (zipmap categories price-updates)))
+    (for [c categories
+          n (range 1 (inc (if (= c :pollutants) 1 100)))]
+      (compute-surpluses-prices-improved ds private-goods-demand-sum public-goods-demand-sum pollutants-demand-sum n c))]))
 
 (defn compute-threshold [supply-list demand-list surplus-list]
   (->> (interleave (flatten surplus-list) (flatten demand-list) (flatten supply-list))
        (partition 3)
        (mapv #(* 100 (/ (Math/abs (* 2 (first %))) (+ (second %) (last %)))))))
+
+(defn compute-threshold-improved [{:keys [id type supply demand surplus]}]
+  (let [threshold (if (or (and (empty? demand) (empty? surplus))
+                          (and (zero? demand) (zero? surplus)))
+                      0
+                      (* 100 (/ (Math/abs (* 2 supply)) (+ demand surplus))))]
+    (hash-map :id id :type type :threshold threshold)))
 
 (defn report-threshold [supply-data demand-data surplus-data include-pollutants?]
   (let [categories (if include-pollutants?

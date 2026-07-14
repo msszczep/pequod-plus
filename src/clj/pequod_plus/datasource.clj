@@ -119,6 +119,16 @@
                                    quantity REAL,
                                    PRIMARY KEY (wc_id, pollutant_id)
                                  );"
+        natural-resources-supply-table "CREATE TABLE natural_resources_supply (
+                                                id INTEGER,
+                                                natural_resource_supply REAL,
+                                                PRIMARY KEY (id)
+                                              );"
+        labor-supply-table "CREATE TABLE labor_supply (
+                                           id INTEGER,
+                                           labor_supply REAL,
+                                           PRIMARY KEY (id)
+                                         );"
         intermediate-inputs-table "CREATE TABLE intermediate_inputs (
                                      wc_id INTEGER,
                                      intermediate_input_id INTEGER,
@@ -165,6 +175,8 @@
       (jdbc/execute! ds [labor-table])
       (jdbc/execute! ds [pollutant-demands-table])
       (jdbc/execute! ds [intermediate-inputs-table])
+      (jdbc/execute! ds [natural-resources-supply-table])
+      (jdbc/execute! ds [labor-supply-table])
       (jdbc/execute! ds [nature-prices-table])
       (jdbc/execute! ds [labor-prices-table])
       (jdbc/execute! ds [ii-prices-table])
@@ -200,6 +212,8 @@
     ".import resources/labor.csv labor"
     ".import resources/pollutant_demands.csv pollutant_demands"
     ".import resources/intermediate_inputs.csv intermediate_inputs"
+    ".import resources/nature_supply.csv natural_resources_supply"
+    ".import resources/labor_supply.csv labor_supply"
     ".import resources/nature_prices.csv nature_prices"
     ".import resources/labor_prices.csv labor_prices"
     ".import resources/intermediate_input_prices.csv intermediate_input_prices"
@@ -212,6 +226,8 @@
     "CREATE INDEX idx_ii_wc_id ON intermediate_inputs(wc_id);"
     "CREATE INDEX idx_ii_ii_id ON intermediate_inputs(intermediate_input_id);"
     "CREATE INDEX idx_wcs ON wcs(id);"
+    "CREATE INDEX idx_labor_supply ON labor_supply(id);"
+    "CREATE INDEX idx_natural_resources_supply ON natural_resources_supply(id);"
     "CREATE INDEX idx_nature_prices ON nature_prices(id)"
     "CREATE INDEX idx_labor_prices ON labor_prices(id)"
     "CREATE INDEX idx_ii_prices ON intermediate_input_prices(id)"

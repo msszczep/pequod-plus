@@ -6,17 +6,9 @@
              [clojure.java.io :as io]))
 
 (def globals
-  (atom {:price-data               {}
-         :price-delta-data         {}
-         :surplus-data             {}
-         :supply-data              {}
-         :demand-data              {}
-         :threshold-report         []
-         :wcs                      []
-         :ccs                      []
-         :iteration                0
-         :include-pollutants?      false
-         :ds                       (jdbc/get-datasource {:dbtype "sqlite" :dbname "pequod.db"})}))
+  (atom {:iteration           0
+         :include-pollutants? false
+         :ds                  (jdbc/get-datasource {:dbtype "sqlite" :dbname "pequod-csv-test.db"})}))
 
 (defn compute-gdp [supply-list private-good-prices public-good-prices]
   (let [[private-good-supply _ _ _ public-good-supply] supply-list]
@@ -86,26 +78,28 @@
         ; _ (println "pollutants-demand-sum: " pollutants-demand-sum)
         ; _ (println "private-goods-demand-sum: " private-goods-demand-sum)
         ; _ (println "public-goods-demand-sum: " public-goods-demand-sum)
-        price-data (util/update-surpluses-prices-improved ds wcs (:num-of-ccs t) pollutants-demand-sum private-goods-demand-sum public-goods-demand-sum (:natural-resources-supply t) (:labor-supply t) (:price-data t) (:price-delta-data t) include-pollutants?)
+        _ (util/update-surpluses-prices-improved ds private-goods-demand-sum public-goods-demand-sum pollutants-demand-sum include-pollutants?)
         ; _ (println "price-data updated")
         ; _ (println "price-data: " price-data)
-        surplus-data (util/get-pricing-data price-data :surplus include-pollutants?)
-        supply-data (util/get-pricing-data price-data :supply include-pollutants?)
-        demand-data (util/get-pricing-data price-data :demand include-pollutants?)
-        price-delta-data (util/update-price-deltas supply-data demand-data surplus-data include-pollutants?)
-        pd-data (util/update-percent-surplus supply-data demand-data surplus-data include-pollutants?)
-        threshold-report (util/report-threshold supply-data demand-data surplus-data include-pollutants?)
+        all-price-data (jdbc/execute!
+                         ds
+                         ["SELECT id, 'intermediate_inputs' as type, price, price_delta, pd, supply, demand, surplus FROM intermediate_input_prices
+                           UNION
+                           SELECT id, 'private_goods' as type, price, price_delta, pd, supply, demand, surplus FROM private_good_prices
+                           UNION
+                           SELECT id, 'public_goods' as type, price, price_delta, pd, supply, demand, surplus FROM public_good_prices
+                           UNION
+                           SELECT id, 'nature' as type, price, price_delta, pd, supply, demand, surplus FROM nature_prices
+                           UNION
+                           SELECT id, 'labor' as type, price, price_delta, pd, supply, demand, surplus FROM labor_prices
+                           UNION
+                           SELECT id, 'pollutants' as type, price, price_delta, pd, supply, demand, surplus FROM pollutant_prices;"]
+                         {:builder-fn result-set/as-unqualified-lower-maps})
+        ; price-delta-data (util/update-price-deltas supply-data demand-data surplus-data include-pollutants?)
+        ; pd-data (util/update-percent-surplus supply-data demand-data surplus-data include-pollutants?)
+        threshold-report (mapv util/compute-threshold-improved all-price-data)
         color (zipmap (keys threshold-report) (map show-color (vals threshold-report)))
-        t2 (assoc t :wcs wcs
-                    :price-data price-data
-                    :surplus-data surplus-data
-                    :supply-data supply-data
-                    :demand-data demand-data
-                    :price-delta-data price-delta-data
-                    :pd-data pd-data
-                    :threshold-report threshold-report
-                    :iteration (inc (:iteration t))
-                    :color color)]
+        t2 (assoc t :iteration (inc (:iteration t)))]
     t2))
 
 (defn print-csv [args-to-print data]

@@ -103,6 +103,12 @@
     (mapv #(vector % price price-delta-to-use nil pd-to-use nil nil nil)
           (range 1 (inc num-goods)))))
 
+; supplies: id, supply
+(defn create-supplies [num-goods]
+  (let [supply 1000]
+    (mapv #(vector % supply)
+          (range 1 (inc num-goods)))))
+
 (defn create-file [file-name data]
   (with-open [writer (io/writer (str "resources/" file-name))]
     (csv/write-csv writer data)))
@@ -137,12 +143,16 @@
         intermediate-inputs (filter-wc-metadata-by-category wc-metadata :intermediate-inputs)
         nature (filter-wc-metadata-by-category wc-metadata :nature)
         labor (filter-wc-metadata-by-category wc-metadata :labor)
-        pollutant-demands (filter-wc-metadata-by-category wc-metadata :pollutant-demands)]
+        pollutant-demands (filter-wc-metadata-by-category wc-metadata :pollutant-demands)
+        nature-supplies (create-supplies num-goods)
+        labor-supplies (create-supplies num-goods)]
     (do
       (create-file "wcs.csv" (create-wcs-in-csv num-of-consumer-councils num-goods))
       (create-file "intermediate_inputs.csv" intermediate-inputs)
       (create-file "nature.csv" nature)
       (create-file "labor.csv" labor)
+      (create-file "nature_supply.csv" nature-supplies)
+      (create-file "labor_supply.csv" labor-supplies)
       (create-file "pollutant_demands.csv" pollutant-demands)
       (create-file "nature_prices.csv" (create-prices num-goods))
       (create-file "labor_prices.csv" (create-prices num-goods))
