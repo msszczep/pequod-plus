@@ -18,3 +18,6 @@ gen:
 
 connect:
 	python3 -m sqlite3 pequod-csv-test.db
+
+go:
+	lein run -m pequod-plus.csvgen

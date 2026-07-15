@@ -6,9 +6,9 @@
              [clojure.java.io :as io]))
 
 (def globals
-  (atom {:iteration           0
-         :include-pollutants? false
-         :ds                  (jdbc/get-datasource {:dbtype "sqlite" :dbname "pequod-csv-test.db"})}))
+   {:iteration           0
+    :include-pollutants? false
+    :ds                  (jdbc/get-datasource {:dbtype "sqlite" :dbname "pequod-csv-test.db"})})
 
 (defn compute-gdp [supply-list private-good-prices public-good-prices]
   (let [[private-good-supply _ _ _ public-good-supply] supply-list]
@@ -27,7 +27,7 @@
         (every? #(< % 20) tre) :orange
         :else :red))
 
-(defn iterate-plan [t _]
+#_(defn iterate-plan [t _]
   (let [include-pollutants? (:include-pollutants? t)
         wcs (mapv (partial util/proposal include-pollutants? (:price-data t)) (:wcs t))
         ccs (mapv (partial util/consume include-pollutants? (t :private-goods) (t :public-good-types) (t :pollutant-types) (count (t :ccs)) (get-in t [:price-data])) (t :ccs))
@@ -62,25 +62,17 @@
          (jdbc/execute-one! ds [q])
          :s)))
 
-(defn iterate-plan-improved [t _]
+(defn iterate-plan-improved [t]
   (let [include-pollutants? (:include-pollutants? t)
         ds (:ds t)
-        ; _ (println "price-data/keys: " (keys (:price-data t)))
         wc-ids (mapv :id (jdbc/execute! ds ["select distinct id from wcs order by id" ] {:builder-fn result-set/as-unqualified-lower-maps}))
+        _ (println "wc-ids: " wc-ids)
         _ (map (partial util/proposal-db ds include-pollutants?) wc-ids)
-        ; _ (println "wcs loaded")
         _ (util/consume-process-all-in-db ds include-pollutants?)
-        ; _ (util/consume-from-db ds include-pollutants? (t :private-goods) (t :public-good-types) (t :pollutant-types) (t :num-of-ccs) (get-in t [:price-data]))
-        ; _ (println "consume-from-db complete")
         pollutants-demand-sum (get-demand-sum ds :pollutant-permissions)
         private-goods-demand-sum (get-demand-sum ds :private-goods)
         public-goods-demand-sum (get-demand-sum ds :public-goods)
-        ; _ (println "pollutants-demand-sum: " pollutants-demand-sum)
-        ; _ (println "private-goods-demand-sum: " private-goods-demand-sum)
-        ; _ (println "public-goods-demand-sum: " public-goods-demand-sum)
         _ (util/update-surpluses-prices-improved ds private-goods-demand-sum public-goods-demand-sum pollutants-demand-sum include-pollutants?)
-        ; _ (println "price-data updated")
-        ; _ (println "price-data: " price-data)
         all-price-data (jdbc/execute!
                          ds
                          ["SELECT id, 'intermediate_inputs' as type, price, price_delta, pd, supply, demand, surplus FROM intermediate_input_prices
@@ -95,10 +87,8 @@
                            UNION
                            SELECT id, 'pollutants' as type, price, price_delta, pd, supply, demand, surplus FROM pollutant_prices;"]
                          {:builder-fn result-set/as-unqualified-lower-maps})
-        ; price-delta-data (util/update-price-deltas supply-data demand-data surplus-data include-pollutants?)
-        ; pd-data (util/update-percent-surplus supply-data demand-data surplus-data include-pollutants?)
         threshold-report (mapv util/compute-threshold-improved all-price-data)
-        color (zipmap (keys threshold-report) (map show-color (vals threshold-report)))
+        _ (println "filtered threshold-report: " (remove #(= 0 (get % :threshold)) threshold-report))
         t2 (assoc t :iteration (inc (:iteration t)))]
     t2))
 
@@ -330,23 +320,23 @@
   (let [keys-to-print [:iteration :color :threshold-report]]
     (do
       #_(swap! globals setup-improved globals ns-to-use)
-      (println (clojure.string/join "|" keys-to-print))
-      (println (print-csv keys-to-print @globals))
-      (while (and (or (empty? (flatten (vals (get @globals :threshold-report))))
+      #_(println (clojure.string/join "|" keys-to-print))
+      #_(println (print-csv keys-to-print @globals))
+      (iterate-plan-improved globals)
+      #_(while (and (or (empty? (flatten (vals (get @globals :threshold-report))))
                       (some #(> % 5) (flatten (vals (get @globals :threshold-report)))))
                   (> 200 (get @globals :iteration)))
         (do
           (swap! globals iterate-plan-improved globals)
           (println (print-csv keys-to-print @globals))))
-      (swap! globals augmented-reset-improved globals)
-      (println "AUGMENTED_RESET")
-      (do
+      #_(swap! globals augmented-reset-improved globals)
+      #_(println "AUGMENTED_RESET")
+      #_(do
           (swap! globals iterate-plan-improved globals)
           (println (print-csv keys-to-print @globals)))
-      (while (and (some #(> % 5) (flatten (vals (get @globals :threshold-report))))
+      #_(while (and (some #(> % 5) (flatten (vals (get @globals :threshold-report))))
                     (> 200 (get @globals :iteration)))
           (do
             (swap! globals iterate-plan-improved globals)
-            (println (print-csv keys-to-print @globals))))
-      )))
+            (println (print-csv keys-to-print @globals)))))))
 

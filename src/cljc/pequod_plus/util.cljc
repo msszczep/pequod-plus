@@ -129,13 +129,13 @@
 (defn update-output-effort [ds output effort wc-id]
   (jdbc/execute! ds ["UPDATE wcs SET output = ?, effort = ? WHERE id = ?;" output effort wc-id]))
 
-(defn update-production-quantities [ds table field production-quantities]
+(defn update-production-quantities [ds table field wc-id production-quantities]
   (let [n (count production-quantities)]
     (doseq [i (range 1 (inc n))]
       (let [s (str "UPDATE " table " SET quantity = " (nth production-quantities (dec i)) " where wc_id = " wc-id " AND " field " = " i)]
         (jdbc/execute! ds [s])))))
 
-(defn solution-3 [a s c k ps b λ p-i include-pollutants?]
+(defn solution-db-3 [a s c k ps b λ p-i include-pollutants? wc-id ds]
   (let [[b1 b2 b3] (flatten b)
         [p1 p2 p3] (flatten ps)
         log-a (Math/log a)
@@ -155,18 +155,13 @@
         x3 (Math/pow Math/E (/ (+ (- (* k log-a)) (- (* b1 k log-b1)) (- (* b2 k log-b2)) (* c log-b3) (- (* k log-b3)) (* b1 k log-b3) (* b2 k log-b3) (- (* c log-c)) (* c log-k) (* b1 k log-p1) (* b2 k log-p2) (- (* c log-p3)) (* k log-p3) (- (* b1 k log-p3)) (- (* b2 k log-p3)) (* c log-s) (- (* k log-λ))) (+ c (- k) (* k b1) (* k b2) (* k b3))))
         effort (Math/pow Math/E (/ (+ (- (* log-a)) (- (* b1 log-b1)) (- (* b2 log-b2)) (- (* b3 log-b3)) (* b1 log-p1) (* b2 log-p2) (* b3 log-p3) (- (* b1 log-λ)) (- (* b2 log-λ)) (- (* b3 log-λ)) (/ (+ (- (* k log-a)) (- (* b1 k log-b1)) (- (* b2 k log-b2)) (- (* b3 k log-b3)) (- (* c log-c)) (* c log-k) (* b1 k log-p1) (* b2 k log-p2) (* b3 k log-p3) (* c log-s) (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ))) (+ c (- k) (* k b1) (* k b2) (* k b3))) (- (/ (* b1 (+ (- (* k log-a)) (- (* b1 k log-b1)) (- (* b2 k log-b2)) (- (* b3 k log-b3)) (- (* c log-c)) (* c log-k) (* b1 k log-p1) (* b2 k log-p2) (* b3 k log-p3) (* c log-s) (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ))))  (+ c (- k) (* k b1) (* k b2) (* k b3)))) (- (/ (* b2 (+ (- (* k log-a)) (- (* b1 k log-b1)) (- (* b2 k log-b2)) (- (* b3 k log-b3)) (- (* c log-c)) (* c log-k) (* b1 k log-p1) (* b2 k log-p2) (* b3 k log-p3) (* c log-s) (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)))) (+ c (- k) (* k b1) (* k b2) (* k b3)))) (- (/ (* b3 (+ (- (* k log-a)) (- (* b1 k log-b1)) (- (* b2 k log-b2)) (- (* b3 k log-b3)) (- (* c log-c)) (* c log-k) (* b1 k log-p1) (* b2 k log-p2) (* b3 k log-p3) (* c log-s) (- (* c log-λ)) (- (* b1 k log-λ)) (- (* b2 k log-λ)) (- (* b3 k log-λ)))) (+ c (- k) (* k b1) (* k b2) (* k b3))))) c))
         [intermediate-input-qs nature-qs labor-qs pollutant-qs] (allot-production-quantities p-i [x1 x2 x3] include-pollutants?)]
-    (if include-pollutants?
-      {:output output
-       :effort effort
-       :intermediate-input-quantities intermediate-input-qs
-       :nature-quantities nature-qs
-       :labor-quantities labor-qs
-       :pollutant-quantities pollutant-qs}
-      {:output output
-       :effort effort
-       :intermediate-input-quantities intermediate-input-qs
-       :nature-quantities nature-qs
-       :labor-quantities labor-qs})))
+    (do
+      (update-output-effort ds output effort wc-id)
+      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" wc-id intermediate-input-qs)
+      (update-production-quantities ds "nature" "nature_id" wc-id nature-qs)
+      (update-production-quantities ds "labor" "labor_id" wc-id labor-qs)
+      (if include-pollutants?
+        (update-production-quantities ds "pollutant_demands" "pollutant_id" wc-id pollutant-qs)))))
 
 (defn solution-db-4 [a s c k ps b λ p-i include-pollutants? wc-id ds]
   (let [[b1 b2 b3 b4] (flatten b)
@@ -210,11 +205,11 @@
         [intermediate-input-qs nature-qs labor-qs pollutant-qs] (allot-production-quantities p-i [x1 x2 x3 x4] include-pollutants?)]
     (do
       (update-output-effort ds output effort wc-id)
-      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" intermediate-input-qs)
-      (update-production-quantities ds "nature" "nature_id" nature-qs)
-      (update-production-quantities ds "labor" "labor_id" labor-qs)
+      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" wc-id intermediate-input-qs)
+      (update-production-quantities ds "nature" "nature_id" wc-id nature-qs)
+      (update-production-quantities ds "labor" "labor_id" wc-id labor-qs)
       (if include-pollutants?
-        (update-production-quantities ds "pollutant_demands" "pollutant_id" pollutant-qs)))))
+        (update-production-quantities ds "pollutant_demands" "pollutant_id" wc-id pollutant-qs)))))
 
 (defn solution-db-5 [a s c k ps b λ p-i include-pollutants? wc-id ds]
   (let [[b1 b2 b3 b4 b5] (flatten b)
@@ -264,11 +259,11 @@
         [intermediate-input-qs nature-qs labor-qs pollutant-qs] (allot-production-quantities p-i [x1 x2 x3 x4 x5] include-pollutants?)]
     (do
       (update-output-effort ds output effort wc-id)
-      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" intermediate-input-qs)
-      (update-production-quantities ds "nature" "nature_id" nature-qs)
-      (update-production-quantities ds "labor" "labor_id" labor-qs)
+      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" wc-id intermediate-input-qs)
+      (update-production-quantities ds "nature" "nature_id" wc-id nature-qs)
+      (update-production-quantities ds "labor" "labor_id" wc-id labor-qs)
       (if include-pollutants?
-        (update-production-quantities ds "pollutant_demands" "pollutant_id" pollutant-qs)))))
+        (update-production-quantities ds "pollutant_demands" "pollutant_id" wc-id pollutant-qs)))))
 
 (defn solution-db-6 [a s c k ps b λ p-i include-pollutants? wc-id ds]
   (let [[b1 b2 b3 b4 b5 b6] (flatten b)
@@ -325,11 +320,11 @@
         [intermediate-input-qs nature-qs labor-qs pollutant-qs] (allot-production-quantities p-i [x1 x2 x3 x4 x5 x6] include-pollutants?)]
     (do
       (update-output-effort ds output effort wc-id)
-      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" intermediate-input-qs)
-      (update-production-quantities ds "nature" "nature_id" nature-qs)
-      (update-production-quantities ds "labor" "labor_id" labor-qs)
+      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" wc-id intermediate-input-qs)
+      (update-production-quantities ds "nature" "nature_id" wc-id nature-qs)
+      (update-production-quantities ds "labor" "labor_id" wc-id labor-qs)
       (if include-pollutants?
-        (update-production-quantities ds "pollutant_demands" "pollutant_id" pollutant-qs)))))
+        (update-production-quantities ds "pollutant_demands" "pollutant_id" wc-id pollutant-qs)))))
 
 (defn solution-db-7 [a s c k ps b λ p-i include-pollutants? wc-id ds]
   (let [[b1 b2 b3 b4 b5 b6 b7] (flatten b)
@@ -393,11 +388,11 @@
         [intermediate-input-qs nature-qs labor-qs pollutant-qs] (allot-production-quantities p-i [x1 x2 x3 x4 x5 x6 x7] include-pollutants?)]
     (do
       (update-output-effort ds output effort wc-id)
-      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" intermediate-input-qs)
-      (update-production-quantities ds "nature" "nature_id" nature-qs)
-      (update-production-quantities ds "labor" "labor_id" labor-qs)
+      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" wc-id intermediate-input-qs)
+      (update-production-quantities ds "nature" "nature_id" wc-id nature-qs)
+      (update-production-quantities ds "labor" "labor_id" wc-id labor-qs)
       (if include-pollutants?
-        (update-production-quantities ds "pollutant_demands" "pollutant_id" pollutant-qs)))))
+        (update-production-quantities ds "pollutant_demands" "pollutant_id" wc-id pollutant-qs)))))
 
 (defn solution-db-8 [a s c k ps b λ p-i include-pollutants? wc-id ds]
   (let [[b1 b2 b3 b4 b5 b6 b7 b8] (flatten b)
@@ -467,11 +462,11 @@
         [intermediate-input-qs nature-qs labor-qs pollutant-qs] (allot-production-quantities p-i [x1 x2 x3 x4 x5 x6 x7 x8] include-pollutants?)]
     (do
       (update-output-effort ds output effort wc-id)
-      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" intermediate-input-qs)
-      (update-production-quantities ds "nature" "nature_id" nature-qs)
-      (update-production-quantities ds "labor" "labor_id" labor-qs)
+      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" wc-id intermediate-input-qs)
+      (update-production-quantities ds "nature" "nature_id" wc-id nature-qs)
+      (update-production-quantities ds "labor" "labor_id" wc-id labor-qs)
       (if include-pollutants?
-        (update-production-quantities ds "pollutant_demands" "pollutant_id" pollutant-qs)))))
+        (update-production-quantities ds "pollutant_demands" "pollutant_id" wc-id pollutant-qs)))))
 
 (defn solution-db-9 [a s c k ps b λ p-i include-pollutants? wc-id ds]
   (let [[b1 b2 b3 b4 b5 b6 b7 b8 b9] (flatten b)
@@ -547,11 +542,11 @@
         [intermediate-input-qs nature-qs labor-qs pollutant-qs] (allot-production-quantities p-i [x1 x2 x3 x4 x5 x6 x7 x8 x9] include-pollutants?)]
     (do
       (update-output-effort ds output effort wc-id)
-      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" intermediate-input-qs)
-      (update-production-quantities ds "nature" "nature_id" nature-qs)
-      (update-production-quantities ds "labor" "labor_id" labor-qs)
+      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" wc-id intermediate-input-qs)
+      (update-production-quantities ds "nature" "nature_id" wc-id nature-qs)
+      (update-production-quantities ds "labor" "labor_id" wc-id labor-qs)
       (if include-pollutants?
-        (update-production-quantities ds "pollutant_demands" "pollutant_id" pollutant-qs)))))
+        (update-production-quantities ds "pollutant_demands" "pollutant_id" wc-id pollutant-qs)))))
 
 (defn solution-db-10 [a s c k ps b λ p-i include-pollutants? wc-id ds]
   (let [[b1 b2 b3 b4 b5 b6 b7 b8 b9 b10] (flatten b)
@@ -623,11 +618,11 @@
          [intermediate-input-qs nature-qs labor-qs pollutant-qs] (allot-production-quantities p-i [x1 x2 x3 x4 x5 x6 x7 x8 x9 x10] include-pollutants?)]
     (do
       (update-output-effort ds output effort wc-id)
-      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" intermediate-input-qs)
-      (update-production-quantities ds "nature" "nature_id" nature-qs)
-      (update-production-quantities ds "labor" "labor_id" labor-qs)
+      (update-production-quantities ds "intermediate_inputs" "intermediate_input_id" wc-id intermediate-input-qs)
+      (update-production-quantities ds "nature" "nature_id" wc-id nature-qs)
+      (update-production-quantities ds "labor" "labor_id" wc-id labor-qs)
       (if include-pollutants?
-        (update-production-quantities ds "pollutant_demands" "pollutant_id" pollutant-qs)))))
+        (update-production-quantities ds "pollutant_demands" "pollutant_id" wc-id pollutant-qs)))))
 
 (defn get-delta [price-delta price-delta-datum]
   (->> price-delta-datum
@@ -715,11 +710,11 @@
                                             (reduce +)))
         surplus (- supply demand)
         newly-computed-price-delta (- 1.05 (Math/pow 0.5 (/ (Math/abs (* 2 surplus)) (+ demand supply))))
-        new-delta (force-to-one (get-delta price-delta-to-use (get price-delta-data type-to-use 1)))
+        new-delta (force-to-one (get-delta newly-computed-price-delta (get price-delta-data type-to-use 1)))
         new-price (cond (pos? surplus) (* (- 1 new-delta) (:price price-datum))
                         (neg? surplus) (* (+ 1 new-delta) (:price price-datum))
                         :else (:price price-datum))]
-    (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use price-delta-to-use :supply supply :demand demand)))
+    (assoc price-datum :pd new-delta :price new-price :surplus surplus :price-delta-to-use newly-computed-price-delta :supply supply :demand demand)))
 
 (defn normalize-category [cat]
   (-> cat
@@ -813,12 +808,11 @@
      (zipmap categories price-updates)))
 
 (defn update-surpluses-prices-improved [ds private-goods-demand-sum public-goods-demand-sum pollutants-demand-sum include-pollutants?]
-  (let [categories (if include-pollutants?
-                     [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
-                     [:private-goods :intermediate-inputs :nature :labor :public-goods])
-    (for [c categories
-          n (range 1 (inc (if (= c :pollutants) 1 100)))]
-      (compute-surpluses-prices-improved ds private-goods-demand-sum public-goods-demand-sum pollutants-demand-sum n c))]))
+  (for [c (if include-pollutants?
+            [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
+            [:private-goods :intermediate-inputs :nature :labor :public-goods])
+        n (range 1 (inc (if (= c :pollutants) 1 100)))]
+    (compute-surpluses-prices-improved ds private-goods-demand-sum public-goods-demand-sum pollutants-demand-sum n c)))
 
 (defn compute-threshold [supply-list demand-list surplus-list]
   (->> (interleave (flatten surplus-list) (flatten demand-list) (flatten supply-list))
@@ -841,7 +835,7 @@
                                                                  (get-in surplus-data [cat-to-use]))) categories)]
     (zipmap categories updates-to-use)))
 
-(defn proposal [ds include-pollutants? prices wc]
+#_(defn proposal [ds include-pollutants? prices wc]
   (letfn [(map-wc-values [w k]
             (let [cats-to-use (if include-pollutants?
                                 [:intermediate-inputs :nature :labor :pollutants]
@@ -931,7 +925,6 @@
           nature (jdbc/execute! ds ["select * from nature where wc_id = ?" wc-id] builder-fn-map)
           labor (jdbc/execute! ds ["select * from labor where wc_id = ?" wc-id] builder-fn-map)
           pollutant-demands (jdbc/execute! ds ["select * from pollutant_demands where wc_id = ?" wc-id] builder-fn-map)
-          input-prices (:intermediate-inputs prices)
           total-factor-productivity (get wc :total_factor_productivity)
           effort-elasticity (get wc :effort_elasticity)
           disutility-of-effort-coefficient (get wc :disutility_of_effort_coefficient)
