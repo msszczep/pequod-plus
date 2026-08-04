@@ -5,10 +5,13 @@
              [next.jdbc.result-set :as result-set]
              [clojure.java.io :as io]))
 
-(def globals
-   {:iteration           0
-    :include-pollutants? false
-    :ds                  (jdbc/get-datasource {:dbtype "sqlite" :dbname "pequod-csv-test.db"})})
+(def ds (jdbc/get-datasource {:dbtype "sqlite" :dbname "pequod-csv-test.db"}))
+
+(def include-pollutants? false)
+
+(def iteration (atom 0))
+
+(def final-results (atom []))
 
 (defn compute-gdp [supply-list private-good-prices public-good-prices]
   (let [[private-good-supply _ _ _ public-good-supply] supply-list]
@@ -26,6 +29,12 @@
         (every? #(< % 10) tre) :yellow
         (every? #(< % 20) tre) :orange
         :else :red))
+
+(defn create-final-output [es]
+  (for [e es]
+    (let [k (first e)
+          ns (second e)]
+      (vector k (show-color ns) (util/mean ns) ns))))
 
 #_(defn iterate-plan [t _]
   (let [include-pollutants? (:include-pollutants? t)
@@ -735,10 +744,8 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
          (jdbc/execute-one! ds [q])
          :s)))
 
-(defn iterate-plan-improved [t]
-  (let [include-pollutants? (:include-pollutants? t)
-        ds (:ds t)
-        solutions-to-use (proposal-db include-pollutants?)
+(defn iterate-plan-improved []
+  (let [solutions-to-use (proposal-db include-pollutants?)
         _ (process-wc-db-calls solutions-to-use include-pollutants?)
         _ (util/consume-process-all-in-db ds include-pollutants?)
         pollutants-demand-sum (get-demand-sum ds :pollutant-permissions)
@@ -748,21 +755,25 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
         ; figure out how to include pollutant-prices
         all-price-data (jdbc/execute!
                          ds
-                         ["SELECT id, 'intermediate_inputs' as type, price, price_delta, pd, supply, demand, surplus FROM intermediate_input_prices
+                         ["SELECT id, 'intermediate-inputs' as type, price, price_delta, pd, supply, demand, surplus FROM intermediate_input_prices
                            UNION
-                           SELECT id, 'private_goods' as type, price, price_delta, pd, supply, demand, surplus FROM private_good_prices
+                           SELECT id, 'private-goods' as type, price, price_delta, pd, supply, demand, surplus FROM private_good_prices
                            UNION
-                           SELECT id, 'public_goods' as type, price, price_delta, pd, supply, demand, surplus FROM public_good_prices
+                           SELECT id, 'public-goods' as type, price, price_delta, pd, supply, demand, surplus FROM public_good_prices
                            UNION
                            SELECT id, 'nature' as type, price, price_delta, pd, supply, demand, surplus FROM nature_prices
                            UNION
                            SELECT id, 'labor' as type, price, price_delta, pd, supply, demand, surplus FROM labor_prices
                            "]
                          {:builder-fn result-set/as-unqualified-lower-maps})
-        threshold-report (mapv util/compute-threshold-improved all-price-data)
-        _ (clojure.pprint/pprint threshold-report)
-        t2 (assoc t :iteration (inc (:iteration t)))]
-    t2))
+        ; _ (println "all-price-data: " all-price-data)
+        threshold-report (map util/compute-threshold-improved all-price-data)
+        ; how to actually handle threshold?
+        threshold-baked (mapv (fn [x] (vector (keyword (first x)) (mapv :threshold (val x)))) (group-by :type threshold-report))
+        final-output (create-final-output threshold-baked)]
+    (do 
+      (swap! iteration inc)
+      (reset! final-results final-output))))
 
 (defn print-csv [args-to-print data]
   (let [all-args (flatten (mapv (partial get data) args-to-print))]
@@ -989,6 +1000,16 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
 ; [:iteration :color :price-data :price-delta-data :pd-data :supply-data :demand-data :surplus-data :threshold-report]
 
 (defn -main [& ns-to-use]
-  (let [keys-to-print [:iteration :color :threshold-report]]
-    (iterate-plan-improved globals)))
+  (do 
+    (iterate-plan-improved)
+    (println "ITERATION: " @iteration)
+    (println @final-results)
+    (println "=========")
+    (while (and (or (some #(> % 5) (flatten (map last @final-results))))
+                (> 500 @iteration))
+      (do
+        (iterate-plan-improved)
+        (println "ITERATION: " @iteration)
+        (println @final-results)
+        (println "=========")))))
 
