@@ -766,7 +766,6 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
                            SELECT id, 'labor' as type, price, price_delta, pd, supply, demand, surplus FROM labor_prices
                            "]
                          {:builder-fn result-set/as-unqualified-lower-maps})
-        ; _ (println "all-price-data: " all-price-data)
         threshold-report (map util/compute-threshold-improved all-price-data)
         ; how to actually handle threshold?
         threshold-baked (mapv (fn [x] (vector (keyword (first x)) (mapv :threshold (val x)))) (group-by :type threshold-report))
@@ -1006,7 +1005,7 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
     (println @final-results)
     (println "=========")
     (while (and (or (some #(> % 5) (flatten (map last @final-results))))
-                (> 500 @iteration))
+                (> 200 @iteration))
       (do
         (iterate-plan-improved)
         (println "ITERATION: " @iteration)

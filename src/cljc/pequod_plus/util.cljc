@@ -308,7 +308,7 @@
   (let [threshold (if (or (and (nil? demand) (nil? surplus))
                           (and (zero? demand) (zero? surplus)))
                       0
-                      (* 100 (/ (Math/abs (* 2 supply)) (+ demand surplus))))]
+                      (* 100 (/ (Math/abs (* 2 surplus)) (+ demand supply))))]
     (hash-map :id id :type type :threshold threshold)))
 
 (defn report-threshold [supply-data demand-data surplus-data include-pollutants?]
