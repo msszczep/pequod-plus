@@ -527,7 +527,7 @@
       LEFT JOIN (
         SELECT cc_id, SUM(exponent) AS sum_exp
         FROM public_goods GROUP BY cc_id
-      ) pub_sum ON pub_sum.cc_id = c.id"])
+      ) pub_sum ON pub_sum.cc_id = c.id;"])
     (jdbc/execute! tx ["CREATE INDEX temp.idx_exponent_sums ON exponent_sums(cc_id);"])
     (jdbc/execute! tx ["UPDATE private_goods SET demand = (
         (SELECT income FROM ccs WHERE id = private_goods.cc_id)
@@ -535,14 +535,14 @@
       ) / (
         (SELECT total_sum FROM exponent_sums WHERE cc_id = private_goods.cc_id)
         * (SELECT price FROM private_good_prices WHERE id = private_goods.good_id)
-      )"])
+      );"])
     (jdbc/execute! tx ["UPDATE public_goods SET demand = (
         (SELECT income FROM ccs WHERE id = public_goods.cc_id)
         * exponent
       ) / (
         (SELECT total_sum FROM exponent_sums WHERE cc_id = public_goods.cc_id)
         * (SELECT price FROM public_good_prices WHERE id = public_goods.good_id)
-      )"])
+      );"])
     (when include-pollutants?
       (do
         (jdbc/execute! tx ["UPDATE pollutant_permissions
@@ -564,8 +564,8 @@
           SELECT COALESCE(SUM(demand), 0)
           FROM pollutant_permissions
           WHERE pollutant_permissions.cc_id = ccs.id
-        )"])))
-    (jdbc/execute! tx ["DROP TABLE exponent_sums"])))
+        );"])))
+    (jdbc/execute! tx ["DROP TABLE exponent_sums;"])))
 
 (defn consume-improved [ds include-pollutants? private-goods public-goods pollutants num-of-ccs price-data]
   (jdbc/with-transaction [tx ds]

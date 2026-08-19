@@ -616,7 +616,7 @@
         wc-updates (mapv (juxt :output :effort :wc-id) data)
         ii-updates (apply concat (mapv process-wc-cats (map (juxt :intermediate-inputs :wc-id) data)))
         nature-updates (apply concat (mapv process-wc-cats (map (juxt :nature :wc-id) data)))
-        labor-updates (apply concat (mapv process-wc-cats (map (juxt :nature :wc-id) data)))
+        labor-updates (apply concat (mapv process-wc-cats (map (juxt :labor :wc-id) data)))
         pollutant-updates (when include-pollutants? (apply concat (mapv process-wc-cats (map (juxt :pollutants :wc-id) data))))]
     (jdbc/with-transaction [tx ds]
       (jdbc/execute-batch! tx "update wcs set output = ?, effort = ? where id = ?" wc-updates {})
@@ -998,17 +998,20 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
 
 ; [:iteration :color :price-data :price-delta-data :pd-data :supply-data :demand-data :surplus-data :threshold-report]
 
+(defn format-final-results [d]
+  (mapv (fn [e] (vector (first e) (second e) (nth e 2))) d))
+
 (defn -main [& ns-to-use]
   (do 
     (iterate-plan-improved)
     (println "ITERATION: " @iteration)
-    (println @final-results)
+    (println (format-final-results @final-results))
     (println "=========")
     (while (and (or (some #(> % 5) (flatten (map last @final-results))))
-                (> 200 @iteration))
+                (> 100 @iteration))
       (do
         (iterate-plan-improved)
         (println "ITERATION: " @iteration)
-        (println @final-results)
+        (println (format-final-results @final-results))
         (println "=========")))))
 
