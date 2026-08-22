@@ -9,7 +9,7 @@
 
 (def include-pollutants? false)
 
-(def iteration (atom 0))
+(def iteration-count (atom 0))
 
 (def final-results (atom []))
 
@@ -771,7 +771,7 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
         threshold-baked (mapv (fn [x] (vector (keyword (first x)) (mapv :threshold (val x)))) (group-by :type threshold-report))
         final-output (create-final-output threshold-baked)]
     (do 
-      (swap! iteration inc)
+      (swap! iteration-count inc)
       (reset! final-results final-output))))
 
 (defn print-csv [args-to-print data]
@@ -1004,14 +1004,14 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
 (defn -main [& ns-to-use]
   (do 
     (iterate-plan-improved)
-    (println "ITERATION: " @iteration)
+    (println "ITERATION: " @iteration-count)
     (println (format-final-results @final-results))
     (println "=========")
     (while (and (or (some #(> % 5) (flatten (map last @final-results))))
-                (> 100 @iteration))
+                (> 100 @iteration-count))
       (do
         (iterate-plan-improved)
-        (println "ITERATION: " @iteration)
+        (println "ITERATION: " @iteration-count)
         (println (format-final-results @final-results))
         (println "=========")))))
 

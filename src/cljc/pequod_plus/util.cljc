@@ -214,7 +214,7 @@
        k))
 
 (defn compute-surpluses-prices-improved [ds private-goods-demand-sum public-goods-demand-sum pollutants-demand-sum id-to-use type-to-use]
-  (let [price (run-query ds [(str "select price from " (get-price-table-name type-to-use) " where id = ?") id-to-use] :price)
+  (let [{:keys [price pd]} (jdbc/execute-one! ds [(str "select price, pd from " (get-price-table-name type-to-use) " where id = ?") id-to-use] {:builder-fn result-set/as-unqualified-lower-maps})
         num-of-ccs (run-query ds ["select count(*) as num from ccs"] :num)
         supply (condp = type-to-use
                            :private-goods
@@ -241,7 +241,7 @@
                              (run-query ds ["select sum(quantity) as sum from pollutant_demands where coefficient = ?" id-to-use] :sum))
         surplus (- supply demand)
         newly-computed-price-delta (- 1.05 (Math/pow 0.5 (/ (Math/abs (* 2 surplus)) (+ demand supply))))
-        new-delta (force-to-one (get-delta newly-computed-price-delta price))
+        new-delta (force-to-one (get-delta newly-computed-price-delta pd))
         new-price (cond (pos? surplus) (* (- 1 new-delta) price)
                         (neg? surplus) (* (+ 1 new-delta) price)
                         :else price)]
