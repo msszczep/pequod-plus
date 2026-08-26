@@ -13,6 +13,16 @@
 
 (def final-results (atom []))
 
+(def price-data (atom []))
+
+(def price-delta-data
+  (atom {:private-goods 0.05
+         :intermediate-inputs 0.05
+         :nature 0.05
+         :labor 0.05
+         :public-goods 0.05
+         :pollutants 0.05}))
+
 (defn compute-gdp [supply-list private-good-prices public-good-prices]
   (let [[private-good-supply _ _ _ public-good-supply] supply-list]
     (->> public-good-prices
@@ -751,7 +761,9 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
         pollutants-demand-sum (get-demand-sum ds :pollutant-permissions)
         private-goods-demand-sum (get-demand-sum ds :private-goods)
         public-goods-demand-sum (get-demand-sum ds :public-goods)
-        _ (util/update-surpluses-prices-improved ds private-goods-demand-sum public-goods-demand-sum pollutants-demand-sum include-pollutants?)
+        previous-price-delta-data @price-delta-data
+        _ (util/update-surpluses-prices-improved ds private-goods-demand-sum public-goods-demand-sum pollutants-demand-sum previous-price-delta-data include-pollutants?)
+        new-price-delta-data (util/update-price-deltas-db ds include-pollutants?)
         ; figure out how to include pollutant-prices
         all-price-data (jdbc/execute!
                          ds
@@ -772,6 +784,8 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
         final-output (create-final-output threshold-baked)]
     (do 
       (swap! iteration-count inc)
+      (reset! price-delta-data new-price-delta-data)
+      (reset! price-data all-price-data)
       (reset! final-results final-output))))
 
 (defn print-csv [args-to-print data]
@@ -1006,6 +1020,7 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
     (iterate-plan-improved)
     (println "ITERATION: " @iteration-count)
     (println (format-final-results @final-results))
+    (println @price-delta-data)
     (println "=========")
     (while (and (or (some #(> % 5) (flatten (map last @final-results))))
                 (> 100 @iteration-count))
@@ -1013,5 +1028,5 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
         (iterate-plan-improved)
         (println "ITERATION: " @iteration-count)
         (println (format-final-results @final-results))
+        (println @price-delta-data)
         (println "=========")))))
-

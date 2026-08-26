@@ -213,8 +213,8 @@
        (jdbc/execute-one! ds q-array)
        k))
 
-(defn compute-surpluses-prices-improved [ds private-goods-demand-sum public-goods-demand-sum pollutants-demand-sum id-to-use type-to-use]
-  (let [{:keys [price pd]} (jdbc/execute-one! ds [(str "select price, pd from " (get-price-table-name type-to-use) " where id = ?") id-to-use] {:builder-fn result-set/as-unqualified-lower-maps})
+(defn compute-surpluses-prices-improved [ds private-goods-demand-sum public-goods-demand-sum pollutants-demand-sum price-delta-data id-to-use type-to-use]
+  (let [{:keys [price pd]} (jdbc/execute-one! ds [(str "select price from " (get-price-table-name type-to-use) " where id = ?") id-to-use] {:builder-fn result-set/as-unqualified-lower-maps})
         num-of-ccs (run-query ds ["select count(*) as num from ccs"] :num)
         supply (condp = type-to-use
                            :private-goods
@@ -241,7 +241,7 @@
                              (run-query ds ["select sum(quantity) as sum from pollutant_demands where coefficient = ?" id-to-use] :sum))
         surplus (- supply demand)
         newly-computed-price-delta (- 1.05 (Math/pow 0.5 (/ (Math/abs (* 2 surplus)) (+ demand supply))))
-        new-delta (force-to-one (get-delta newly-computed-price-delta pd))
+        new-delta (force-to-one (get-delta newly-computed-price-delta (get price-delta-data type-to-use 1)))
         new-price (cond (pos? surplus) (* (- 1 new-delta) price)
                         (neg? surplus) (* (+ 1 new-delta) price)
                         :else price)]
@@ -265,6 +265,33 @@
          (jdbc/execute! ds ["UPDATE pollutant_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?;" 
                              new-delta new-price newly-computed-price-delta supply demand surplus id-to-use])
       )))
+
+(defn calculate-price-deltas [supply-list demand-list surplus-list]
+  (let [surplus-list-means (mean surplus-list)
+        averaged-s-and-d (mean [(mean supply-list) (mean demand-list)])]
+        (Math/abs (/ surplus-list-means averaged-s-and-d))))
+
+(defn update-price-deltas-db [ds include-pollutants?]
+  (let [categories
+        (if include-pollutants?
+          [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
+          [:private-goods :intermediate-inputs :nature :labor :public-goods])
+
+        data
+        (into {}
+              (for [category categories]
+                (let [rows
+                      (jdbc/execute! ds [(str "SELECT supply, demand, surplus FROM " (get-price-table-name category))]
+                                     {:builder-fn result-set/as-unqualified-lower-maps})
+                      supply-list (map :supply rows)
+                      demand-list (map :demand rows)
+                      surplus-list (map :surplus rows)]
+                  [category (calculate-price-deltas supply-list demand-list surplus-list)])))]
+
+    (doseq [[category price-delta] data]
+      (jdbc/execute! ds ["UPDATE price_delta_data SET price_delta = ? WHERE type = ?" price-delta (get-price-table-name category)]))
+
+    data))
 
 (defn compute-percent-surplus [supply-list demand-list surplus-list]
   (let [averaged-s-and-d (->> (interleave (flatten supply-list)
@@ -292,12 +319,12 @@
         price-updates (mapv (fn [type-to-use] (mapv (partial compute-surpluses-prices wcs ccs natural-resources-supply labor-supply price-delta-data type-to-use) (get-in price-data [type-to-use]))) categories)]
      (zipmap categories price-updates)))
 
-(defn update-surpluses-prices-improved [ds private-goods-demand-sum public-goods-demand-sum pollutants-demand-sum include-pollutants?]
+(defn update-surpluses-prices-improved [ds private-goods-demand-sum public-goods-demand-sum pollutants-demand-sum price-delta-data include-pollutants?]
   (doseq [c (if include-pollutants?
               [:private-goods :intermediate-inputs :nature :labor :public-goods :pollutants]
               [:private-goods :intermediate-inputs :nature :labor :public-goods])
           n (range 1 (inc (if (= c :pollutants) 1 100)))]
-    (compute-surpluses-prices-improved ds private-goods-demand-sum public-goods-demand-sum pollutants-demand-sum n c)))
+    (compute-surpluses-prices-improved ds private-goods-demand-sum public-goods-demand-sum pollutants-demand-sum price-delta-data n c)))
 
 (defn compute-threshold [supply-list demand-list surplus-list]
   (->> (interleave (flatten surplus-list) (flatten demand-list) (flatten supply-list))
@@ -593,11 +620,6 @@
                      [:private-goods :intermediate-inputs :nature :labor :public-goods])
         data-to-get (mapv (fn [type-to-use] (mapv pricing-cat (get-in price-data [type-to-use]))) categories)]
     (zipmap categories data-to-get)))
-
-(defn calculate-price-deltas [supply-list demand-list surplus-list]
-  (let [surplus-list-means (mean surplus-list)
-        averaged-s-and-d (mean [(mean supply-list) (mean demand-list)])]
-        (Math/abs (/ surplus-list-means averaged-s-and-d))))
 
 (defn update-price-deltas [supply-data demand-data surplus-data include-pollutants?]
   (let [categories (if include-pollutants?

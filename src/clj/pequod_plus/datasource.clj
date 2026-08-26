@@ -80,6 +80,21 @@
       (jdbc/execute! ds [public-good-prices-table])
       (jdbc/execute! ds [pollutant-prices-table]))))
 
+(defn create-and-populate-price-delta-table [ds]
+  (let [price-delta-table "CREATE TABLE price_delta_data (
+                             type TEXT PRIMARY KEY,
+                             price_delta REAL NOT NULL
+                           );"
+        populate-price-delta-table "INSERT INTO price_delta_data (type, price_delta)
+                                    VALUES ('private-goods', 0.05),
+                                           ('intermediate-inputs', 0.05),
+                                           ('nature', 0.05),
+                                           ('labor', 0.05),
+                                           ('public-goods', 0.05);"]
+    (do
+      (jdbc/execute! ds [price-delta-table])
+      (jdbc/execute! ds [populate-price-delta-table]))))
+
 (defn create-normalized-wcs-tables [ds]
   (let [wcs-table "CREATE TABLE wcs (
                      id INTEGER PRIMARY KEY,
@@ -241,6 +256,7 @@
       (p/create-all-wcs-csv-files)
       (create-normalized-ccs-tables ds)
       (create-normalized-wcs-tables ds)
+      (create-and-populate-price-delta-table ds)
       (import-data-into-ccs-tables db)
       (import-data-into-wcs-tables db))))
 
