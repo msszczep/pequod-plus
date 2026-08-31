@@ -7,7 +7,7 @@
 
 (def ds (jdbc/get-datasource {:dbtype "sqlite" :dbname "pequod-csv-test.db"}))
 
-(def include-pollutants? false)
+(def include-pollutants? true)
 
 (def iteration-count (atom 0))
 
@@ -634,7 +634,7 @@
       (jdbc/execute-batch! tx "update nature set quantity = ? where nature_id = ? and wc_id = ?" nature-updates {})
       (jdbc/execute-batch! tx "update labor set quantity = ? where labor_id = ? and wc_id = ?" labor-updates {})
       (when include-pollutants?
-        (jdbc/execute-batch! tx "update pollutants set quantity = ? where pollutant_id = ? and wc_id = ?" pollutant-updates {})))))
+        (jdbc/execute-batch! tx "update pollutant_demands set quantity = ? where pollutant_id = ? and wc_id = ?" pollutant-updates {})))))
 
 (defn process-wc [include-pollutants? intermediate-inputs-by-wc nature-by-wc labor-by-wc pollutant-demands-by-wc intermediate-input-prices labor-prices nature-prices pollutant-prices private-good-prices public-good-prices wc]
   (let [wc-id (:id wc)
@@ -776,10 +776,11 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
                            SELECT id, 'nature' as type, price, price_delta, pd, supply, demand, surplus FROM nature_prices
                            UNION
                            SELECT id, 'labor' as type, price, price_delta, pd, supply, demand, surplus FROM labor_prices
+                           UNION
+                           SELECT id, 'pollutants' as type, price, price_delta, pd, supply, demand, surplus FROM pollutant_prices
                            "]
                          {:builder-fn result-set/as-unqualified-lower-maps})
         threshold-report (map util/compute-threshold-improved all-price-data)
-        ; how to actually handle threshold?
         threshold-baked (mapv (fn [x] (vector (keyword (first x)) (mapv :threshold (val x)))) (group-by :type threshold-report))
         final-output (create-final-output threshold-baked)]
     (do 
@@ -1020,7 +1021,6 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
     (iterate-plan-improved)
     (println "ITERATION: " @iteration-count)
     (println (format-final-results @final-results))
-    (println @price-delta-data)
     (println "=========")
     (while (and (or (some #(> % 5) (flatten (map last @final-results))))
                 (> 100 @iteration-count))
@@ -1028,5 +1028,4 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
         (iterate-plan-improved)
         (println "ITERATION: " @iteration-count)
         (println (format-final-results @final-results))
-        (println @price-delta-data)
         (println "=========")))))
