@@ -412,8 +412,7 @@
                                            demand (get pollutant-demand-by-id id 0)
                                            category-price-delta (get price-delta-data :pollutants 1)]
                                        (assoc (calculate-new-price price supply demand category-price-delta) :id id)))
-                                   (get prices-by-type "pollutants")) [])
-          _ (println "pollutant-updates: " pollutant-updates)]
+                                   (get prices-by-type "pollutants")) [])]
       (do 
         (jdbc/execute-batch! tx "UPDATE private_good_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?"
                              (mapv (fn [{:keys [pd price price-delta-to-use supply demand surplus id]}]
@@ -801,6 +800,14 @@ WHERE ccs.id = public_goods.cc_id;"]))
     (jdbc/execute! tx ["UPDATE public_goods SET exponent = augment + exponent;"])
     (when include-pollutants?
       (jdbc/execute! tx ["UPDATE pollutant_permissions SET exponent = augment + exponent;"]))))
+
+(defn augment-wc-in-db [ds include-pollutants?]
+  (jdbc/with-transaction [tx ds]
+    (jdbc/execute! tx ["UPDATE intermediate_inputs SET exponent = augment + exponent;"])
+    (jdbc/execute! tx ["UPDATE nature SET exponent = augment + exponent;"])
+    (jdbc/execute! tx ["UPDATE labor SET exponent = augment + exponent;"])
+    (when include-pollutants?
+      (jdbc/execute! tx ["UPDATE pollutant_demands SET exponent = augment + exponent;"]))))
 
 (defn augmented-reset [t]
   (assoc t :iteration 0

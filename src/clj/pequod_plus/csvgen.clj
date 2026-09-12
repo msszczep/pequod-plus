@@ -7,7 +7,7 @@
 
 (def ds (jdbc/get-datasource {:dbtype "sqlite" :dbname "pequod-csv-test.db"}))
 
-(def include-pollutants? true)
+(def include-pollutants? false)
 
 (def iteration-count (atom 0))
 
@@ -44,7 +44,7 @@
   (for [e es]
     (let [k (first e)
           ns (second e)]
-      (vector k (show-color ns) (util/mean ns) ns))))
+      (vector k (show-color ns) (apply max ns) ns))))
 
 #_(defn iterate-plan [t _]
   (let [include-pollutants? (:include-pollutants? t)
@@ -792,6 +792,12 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
   (let [all-args (flatten (mapv (partial get data) args-to-print))]
     (clojure.string/join "|" all-args)))
 
+(defn augmented-reset-db []
+  (do
+    (reset! iteration-count 0)
+    (util/augment-cc-in-db ds include-pollutants?)
+    (util/augment-wc-in-db ds include-pollutants?)))
+
 (defn augmented-reset [t _]
   (assoc t :iteration 0
            :ccs (mapv util/augment-cc (get t :ccs))
@@ -1015,7 +1021,7 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
 (defn format-final-results [d]
   (mapv (fn [e] (vector (first e) (second e) (nth e 2))) d))
 
-(defn -main [& ns-to-use]
+(defn run-iteration-year []
   (do 
     (iterate-plan-improved)
     (println "ITERATION: " @iteration-count)
@@ -1028,3 +1034,11 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
         (println "ITERATION: " @iteration-count)
         (println (format-final-results @final-results))
         (println "=========")))))
+
+(defn -main [& ns-to-use]
+  (do
+    (run-iteration-year)
+    (println "AUGMENT start")
+    (augmented-reset-db)
+    (println "AUGMENT end")
+    (run-iteration-year)))
