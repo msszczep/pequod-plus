@@ -754,32 +754,31 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
          (jdbc/execute-one! ds [q])
          :s)))
 
+(defn get-all-price-data [include-pollutants?]
+  (jdbc/execute! ds
+                 [(str "SELECT id, 'intermediate-inputs' as type, price, price_delta, pd, supply, demand, surplus FROM intermediate_input_prices
+                        UNION
+                        SELECT id, 'private-goods' as type, price, price_delta, pd, supply, demand, surplus FROM private_good_prices
+                        UNION
+                        SELECT id, 'public-goods' as type, price, price_delta, pd, supply, demand, surplus FROM public_good_prices
+                        UNION
+                        SELECT id, 'nature' as type, price, price_delta, pd, supply, demand, surplus FROM nature_prices
+                        UNION
+                        SELECT id, 'labor' as type, price, price_delta, pd, supply, demand, surplus FROM labor_prices"
+                    (if include-pollutants? " UNION SELECT id, 'pollutants' as type, price, price_delta, pd, supply, demand, surplus from pollutant_prices" ""))]
+                 {:builder-fn result-set/as-unqualified-lower-maps}))
+
 (defn iterate-plan-improved []
   (let [solutions-to-use (proposal-db include-pollutants?)
         _ (process-wc-db-calls solutions-to-use include-pollutants?)
         _ (util/consume-process-all-in-db ds include-pollutants?)
-        pollutants-demand-sum (get-demand-sum ds :pollutant-permissions)
+        pollutant-permissions-sum (get-demand-sum ds :pollutant-permissions)
         private-goods-demand-sum (get-demand-sum ds :private-goods)
         public-goods-demand-sum (get-demand-sum ds :public-goods)
         previous-price-delta-data @price-delta-data
-        _ (util/update-surpluses-prices-improved ds private-goods-demand-sum public-goods-demand-sum pollutants-demand-sum previous-price-delta-data include-pollutants?)
+        _ (util/update-surpluses-prices-improved-db ds private-goods-demand-sum public-goods-demand-sum pollutant-permissions-sum previous-price-delta-data include-pollutants?)
         new-price-delta-data (util/update-price-deltas-db ds include-pollutants?)
-        ; figure out how to include pollutant-prices
-        all-price-data (jdbc/execute!
-                         ds
-                         ["SELECT id, 'intermediate-inputs' as type, price, price_delta, pd, supply, demand, surplus FROM intermediate_input_prices
-                           UNION
-                           SELECT id, 'private-goods' as type, price, price_delta, pd, supply, demand, surplus FROM private_good_prices
-                           UNION
-                           SELECT id, 'public-goods' as type, price, price_delta, pd, supply, demand, surplus FROM public_good_prices
-                           UNION
-                           SELECT id, 'nature' as type, price, price_delta, pd, supply, demand, surplus FROM nature_prices
-                           UNION
-                           SELECT id, 'labor' as type, price, price_delta, pd, supply, demand, surplus FROM labor_prices
-                           UNION
-                           SELECT id, 'pollutants' as type, price, price_delta, pd, supply, demand, surplus FROM pollutant_prices
-                           "]
-                         {:builder-fn result-set/as-unqualified-lower-maps})
+        all-price-data (get-all-price-data include-pollutants?)
         threshold-report (map util/compute-threshold-improved all-price-data)
         threshold-baked (mapv (fn [x] (vector (keyword (first x)) (mapv :threshold (val x)))) (group-by :type threshold-report))
         final-output (create-final-output threshold-baked)]
@@ -1023,7 +1022,7 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
     (println (format-final-results @final-results))
     (println "=========")
     (while (and (or (some #(> % 5) (flatten (map last @final-results))))
-                (> 100 @iteration-count))
+                (> 200 @iteration-count))
       (do
         (iterate-plan-improved)
         (println "ITERATION: " @iteration-count)

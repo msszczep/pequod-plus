@@ -89,9 +89,9 @@
             (rand-nth [(- 0.002) (- 0.001) 0 0.001 0.002])
             0)))
 
-; ccs table: id, cohort_region, income, positive_utility_from_income
-(defn create-ccs-in-csv [num-of-consumer-councils]       
-    (mapv #(vector % 1 5000 (rand-nth [0.11 0.13 0.15 0.17 0.19])         
+; ccs table: id, cohort_region, income, positive_utility_from_income, negative_utility_from_exposure
+(defn create-ccs-in-csv [num-of-consumer-councils]
+    (mapv #(vector % 1 5000 (rand-nth [1.11 1.13 1.15 1.17 1.19])
                             (rand-nth [0.11 0.13 0.15 0.17 0.19]))
           (range 1 (inc num-of-consumer-councils))))
 
