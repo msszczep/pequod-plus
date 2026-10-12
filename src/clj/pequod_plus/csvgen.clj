@@ -15,6 +15,10 @@
 
 (def price-data (atom []))
 
+(def p1 (atom 1.05)) ;default value
+
+(def p2 (atom 0.5)) ; default value
+
 (def price-delta-data
   (atom {:private-goods 0.05
          :intermediate-inputs 0.05
@@ -44,7 +48,7 @@
   (for [e es]
     (let [k (first e)
           ns (second e)]
-      (vector k (show-color ns) (apply max ns) ns))))
+      (vector k (show-color ns) (format "%.2f" (apply max ns)) ns))))
 
 #_(defn iterate-plan [t _]
   (let [include-pollutants? (:include-pollutants? t)
@@ -744,6 +748,114 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
             (str "unexpected input-count value: " input-count-r))
             (recur (rest w)))))))
 
+(defn calculate-new-price [price supply demand category-price-delta]
+  (let [surplus (- supply demand)
+        newly-computed-price-delta (- @p1 (Math/pow @p2 (/ (Math/abs (* 2 surplus)) (+ demand supply))))
+        new-delta (util/force-to-one (util/get-delta newly-computed-price-delta category-price-delta))
+        new-price (cond (pos? surplus) (* (- 1 new-delta) price)
+                        (neg? surplus) (* (+ 1 new-delta) price)
+                        :else price)]
+    {:price new-price
+     :pd new-delta
+     :price-delta-to-use newly-computed-price-delta
+     :supply supply
+     :demand demand
+     :surplus surplus}))
+
+(defn update-surpluses-prices-improved-db [ds private-goods-demand-sum public-goods-demand-sum pollutant-permissions-sum price-delta-data include-pollutants?]
+  (jdbc/with-transaction [tx ds]
+    (let [b {:builder-fn result-set/as-unqualified-lower-maps}
+          price-rows (jdbc/execute! tx [(str "SELECT id, 'intermediate-inputs' as type, price FROM intermediate_input_prices
+                        UNION
+                        SELECT id, 'private-goods' as type, price FROM private_good_prices
+                        UNION
+                        SELECT id, 'public-goods' as type, price FROM public_good_prices
+                        UNION
+                        SELECT id, 'nature' as type, price FROM nature_prices
+                        UNION
+                        SELECT id, 'labor' as type, price FROM labor_prices"
+                    (if include-pollutants? " UNION SELECT id, 'pollutants' as type, price from pollutant_prices" ""))] b)
+          prices-by-type (group-by :type price-rows)
+          supply-by-industry-and-product (->> (jdbc/execute! tx ["SELECT industry, product, SUM(output) AS supply FROM wcs GROUP BY industry, product"] b)
+                                                     (map (fn [{:keys [industry product supply]}] [[industry product] supply]))
+                                                     (into {}))
+          nature-supply-by-id (->> (jdbc/execute! tx ["SELECT id, natural_resource_supply AS supply FROM natural_resources_supply"] b)
+                                   (map (juxt :id :supply))
+                                   (into {}))
+          labor-supply-by-id (->> (jdbc/execute! tx ["SELECT id, labor_supply AS supply FROM labor_supply"] b)
+                                  (map (juxt :id :supply))
+                                  (into {}))
+          intermediate-demand-by-id  (->> (jdbc/execute! tx ["SELECT coefficient, SUM(quantity) AS demand FROM intermediate_inputs GROUP BY coefficient"] b)
+                                          (map (juxt :coefficient :demand))
+                                          (into {}))
+          nature-demand-by-id (->> (jdbc/execute! tx ["SELECT coefficient, SUM(quantity) AS demand FROM nature GROUP BY coefficient"] b)
+                                   (map (juxt :coefficient :demand))
+                                   (into {}))
+          labor-demand-by-id (->> (jdbc/execute! tx ["SELECT coefficient, SUM(quantity) AS demand FROM labor GROUP BY coefficient"] b)
+                                  (map (juxt :coefficient :demand))
+                                  (into {}))
+          pollutant-demand-by-id (->> (jdbc/execute! tx ["SELECT coefficient, SUM(quantity) AS demand FROM pollutant_demands GROUP BY coefficient"] b)
+                                      (map (juxt :coefficient :demand))
+                                      (into {}))
+          num-of-ccs (util/run-query tx ["SELECT COUNT(*) AS num FROM ccs"] :num)
+          private-good-updates (mapv (fn [{:keys [id price]}]
+                                       (let [supply (get supply-by-industry-and-product [0 id] 0)
+                                             demand private-goods-demand-sum
+                                             category-price-delta (get price-delta-data :private-goods 1)]
+                                         (assoc (calculate-new-price price supply demand category-price-delta) :id id)))
+                                     (get prices-by-type "private-goods"))
+          intermediate-input-updates (mapv (fn [{:keys [id price]}]
+                                             (let [supply (get supply-by-industry-and-product [1 id] 0)
+                                                   demand (intermediate-demand-by-id id 0)
+                                                   category-price-delta (get price-delta-data :intermediate-inputs 1)]
+                                               (assoc (calculate-new-price price supply demand category-price-delta) :id id)))
+                                           (get prices-by-type "intermediate-inputs"))
+          nature-updates (mapv (fn [{:keys [id price]}]
+                                 (let [supply (get nature-supply-by-id id 0)
+                                       demand (get nature-demand-by-id id 0)
+                                       category-price-delta (get price-delta-data :nature 1)]
+                                   (assoc (calculate-new-price price supply demand category-price-delta) :id id)))
+                               (get prices-by-type "nature"))
+          labor-updates (mapv (fn [{:keys [id price]}]
+                                (let [supply (get labor-supply-by-id id 0)
+                                      demand (get labor-demand-by-id id 0)
+                                      category-price-delta (get price-delta-data :labor 1)]
+                                  (assoc (calculate-new-price price supply demand category-price-delta) :id id)))
+                              (get prices-by-type "labor"))
+          public-good-updates (mapv (fn [{:keys [id price]}]
+                                      (let [supply (get supply-by-industry-and-product [2 id] 0)
+                                            demand (/ public-goods-demand-sum num-of-ccs)
+                                            category-price-delta (get price-delta-data :public-goods 1)]
+                                        (assoc (calculate-new-price price supply demand category-price-delta) :id id)))
+                                    (get prices-by-type "public-goods"))
+          pollutant-updates (if include-pollutants?
+                                (mapv (fn [{:keys [id price]}]
+                                     (let [supply (/ pollutant-permissions-sum num-of-ccs)
+                                           demand (get pollutant-demand-by-id id 0)
+                                           category-price-delta (get price-delta-data :pollutants 1)]
+                                       (assoc (calculate-new-price price supply demand category-price-delta) :id id)))
+                                   (get prices-by-type "pollutants")) [])]
+      (do
+        (jdbc/execute-batch! tx "UPDATE private_good_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?"
+                             (mapv (fn [{:keys [pd price price-delta-to-use supply demand surplus id]}]
+                                     [pd price price-delta-to-use supply demand surplus id]) private-good-updates) {})
+        (jdbc/execute-batch! tx "UPDATE intermediate_input_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?"
+                             (mapv (fn [{:keys [pd price price-delta-to-use supply demand surplus id]}]
+                                     [pd price price-delta-to-use supply demand surplus id]) intermediate-input-updates) {})
+        (jdbc/execute-batch! tx "UPDATE nature_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?"
+                             (mapv (fn [{:keys [pd price price-delta-to-use supply demand surplus id]}]
+                                     [pd price price-delta-to-use supply demand surplus id]) nature-updates) {})
+        (jdbc/execute-batch! tx "UPDATE labor_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?"
+                             (mapv (fn [{:keys [pd price price-delta-to-use supply demand surplus id]}]
+                                     [pd price price-delta-to-use supply demand surplus id]) labor-updates) {})
+        (jdbc/execute-batch! tx "UPDATE public_good_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?"
+                             (mapv (fn [{:keys [pd price price-delta-to-use supply demand surplus id]}]
+                                     [pd price price-delta-to-use supply demand surplus id]) public-good-updates) {})
+        (if include-pollutants?
+          (jdbc/execute-batch! tx "UPDATE pollutant_prices SET pd = ?, price = ?, price_delta_to_use = ?, supply = ?, demand = ?, surplus = ? WHERE id = ?"
+                               (mapv (fn [{:keys [pd price price-delta-to-use supply demand surplus id]}]
+                                       [pd price price-delta-to-use supply demand surplus id]) pollutant-updates) {}))))))
+
 (defn get-demand-sum [ds table-name]
   (let [q (case table-name
             :pollutant-permissions "select sum(demand) as s from pollutant_permissions"
@@ -776,13 +888,13 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
         private-goods-demand-sum (get-demand-sum ds :private-goods)
         public-goods-demand-sum (get-demand-sum ds :public-goods)
         previous-price-delta-data @price-delta-data
-        _ (util/update-surpluses-prices-improved-db ds private-goods-demand-sum public-goods-demand-sum pollutant-permissions-sum previous-price-delta-data include-pollutants?)
+        _ (update-surpluses-prices-improved-db ds private-goods-demand-sum public-goods-demand-sum pollutant-permissions-sum previous-price-delta-data include-pollutants?)
         new-price-delta-data (util/update-price-deltas-db ds include-pollutants?)
         all-price-data (get-all-price-data include-pollutants?)
         threshold-report (map util/compute-threshold-improved all-price-data)
         threshold-baked (mapv (fn [x] (vector (keyword (first x)) (mapv :threshold (val x)))) (group-by :type threshold-report))
         final-output (create-final-output threshold-baked)]
-    (do 
+    (do
       (swap! iteration-count inc)
       (reset! price-delta-data new-price-delta-data)
       (reset! price-data all-price-data)
@@ -1021,24 +1133,30 @@ o              disutility-of-effort-exponent (get wc :disutility_of_effort_expon
 (defn format-final-results [d]
   (mapv (fn [e] (vector (first e) (second e) (nth e 2))) d))
 
+(defn copy-file [source-path destination-path]
+  (io/copy (io/file source-path) (io/file destination-path)))
+
 (defn run-iteration-year []
-  (do 
+  (do
+    (println "====== P1/P2:" @p1 @p2)
     (iterate-plan-improved)
-    (println "ITERATION: " @iteration-count)
-    (println (format-final-results @final-results))
-    (println "=========")
+    (println "I:" @iteration-count "|" (format-final-results @final-results))
     (while (and (or (some #(> % 5) (flatten (map last @final-results))))
                 (> 200 @iteration-count))
       (do
         (iterate-plan-improved)
-        (println "ITERATION: " @iteration-count)
-        (println (format-final-results @final-results))
-        (println "=========")))))
+        (println "I:" @iteration-count "|" (format-final-results @final-results))))))
 
-(defn -main [& ns-to-use]
+(defn -main [& args]
   (do
+    (reset! p1 (Float/parseFloat (first args)))
+    (reset! p2 (Float/parseFloat (last args)))
+    (reset! iteration-count 0)
+    (println "YEAR ONE")
     (run-iteration-year)
     (println "AUGMENT start")
     (augmented-reset-db)
     (println "AUGMENT end")
+    (reset! iteration-count 0)
+    (println "YEAR TWO")
     (run-iteration-year)))
